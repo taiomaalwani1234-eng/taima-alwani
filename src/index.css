@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Georgia:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --color-primary: var(--sys-primary);
+  --color-on-primary: var(--sys-on-primary);
+  --color-primary-container: var(--sys-primary-container);
+  --color-on-primary-container: var(--sys-on-primary-container);
+  --color-secondary: var(--sys-secondary);
+  --color-on-secondary: var(--sys-on-secondary);
+  --color-error: var(--sys-error);
+  --color-on-error: var(--sys-on-error);
+  --color-background: var(--sys-background);
+  --color-on-background: var(--sys-on-background);
+  --color-surface: var(--sys-surface);
+  --color-on-surface: var(--sys-on-surface);
+  --color-surface-variant: var(--sys-surface-variant);
+  --color-on-surface-variant: var(--sys-on-surface-variant);
+  --color-outline: var(--sys-outline);
+  --color-outline-variant: var(--sys-outline-variant);
+  --color-surface-container-lowest: var(--sys-surface-container-lowest);
+  --color-surface-container-low: var(--sys-surface-container-low);
+  --color-surface-container: var(--sys-surface-container);
+  --color-surface-container-high: var(--sys-surface-container-high);
+
+  --font-h1-display: 'Space Grotesk', sans-serif;
+  --font-h2-header: 'Space Grotesk', sans-serif;
+  --font-h3-terminal: 'Space Grotesk', sans-serif;
+  --font-label-caps: 'Space Grotesk', sans-serif;
+  --font-body-sm: 'Manrope', sans-serif;
+  --font-body-main: 'Manrope', sans-serif;
+
+  --font-sans: 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Georgia', serif;
+}
+
+@layer base {
+  :root {
+    --sys-primary: #3BB2F6;
+    --sys-on-primary: #FFFFFF;
+    --sys-primary-container: #BAE6FD;
+    --sys-on-primary-container: #0369A1;
+    --sys-secondary: #06B6D4;
+    --sys-on-secondary: #FFFFFF;
+    --sys-error: #ba1a1a;
+    --sys-on-error: #ffffff;
+    --sys-background: #F5F7FF;
+    --sys-on-background: #1e293b;
+    --sys-surface: #FFFFFF;
+    --sys-on-surface: #1e293b;
+    --sys-surface-variant: #E4E9F7;
+    --sys-on-surface-variant: #6B7A99;
+    --sys-outline: #6B7A99;
+    --sys-outline-variant: #E4E9F7;
+    --sys-surface-container-lowest: #FFFFFF;
+    --sys-surface-container-low: #F5F7FF;
+    --sys-surface-container: #E4E9F7;
+    --sys-surface-container-high: #D8E0F2;
+  }
+
+  .dark {
+    --sys-primary: #3BB2F6;
+    --sys-on-primary: #0F172A;
+    --sys-primary-container: #0284C7;
+    --sys-on-primary-container: #F0F9FF;
+    --sys-secondary: #06B6D4;
+    --sys-on-secondary: #0F172A;
+    --sys-error: #ffb4ab;
+    --sys-on-error: #690005;
+    --sys-background: #0f172a;
+    --sys-on-background: #E5E7EB;
+    --sys-surface: #1e293b;
+    --sys-on-surface: #E5E7EB;
+    --sys-surface-variant: #334155;
+    --sys-on-surface-variant: #94A3B8;
+    --sys-outline: #475569;
+    --sys-outline-variant: #1e293b;
+    --sys-surface-container-lowest: #020617;
+    --sys-surface-container-low: #0f172a;
+    --sys-surface-container: #1e293b;
+    --sys-surface-container-high: #334155;
+  }
+}
+
+.scanning-overlay {
+    background: linear-gradient(rgba(100, 255, 218, 0.03) 1px, transparent 1px);
+    background-size: 100% 4px;
+    pointer-events: none;
+}
+.clipped-corner {
+    clip-path: polygon(0 0, 90% 0, 100% 15%, 100% 100%, 0 100%);
+}
+.glass-panel {
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--color-outline-variant);
+}
+
+@keyframes shake {
+  0% { transform: translate(1px, 1px) rotate(0deg); }
+  10% { transform: translate(-1px, -2px) rotate(-1deg); }
+  20% { transform: translate(-3px, 0px) rotate(1deg); }
+  30% { transform: translate(3px, 2px) rotate(0deg); }
+  40% { transform: translate(1px, -1px) rotate(1deg); }
+  50% { transform: translate(-1px, 2px) rotate(-1deg); }
+  60% { transform: translate(-3px, 1px) rotate(0deg); }
+  70% { transform: translate(3px, 1px) rotate(-1deg); }
+  80% { transform: translate(-1px, -1px) rotate(1deg); }
+  90% { transform: translate(1px, 2px) rotate(0deg); }
+  100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
