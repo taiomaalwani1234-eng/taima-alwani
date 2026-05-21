@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CityMap, Sector } from './Map';
 import { GlobalHeader } from './GlobalHeader';
+import { Toast, useToast } from './Toast';
 import { 
   LogOut, ShieldAlert, ShieldCheck, Trophy, 
   Terminal as TerminalIcon, Settings, Bell as Notifications, Globe as Public, Clock as Schedule,
@@ -58,6 +59,10 @@ const playErrorSound = () => {
 
 export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentName, studentLevel }) => {
   const [isShaking, setIsShaking] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(
+    document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+  );
+  const { toast, show: showToast, hide: hideToast } = useToast();
 
   
   const [gameState, setGameState] = useState<'mode_selection' | 'menu' | 'playing'>('menu');
@@ -143,6 +148,14 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
       inputRef.current?.focus();
     }
   }, [isTerminalBusy, currentAttack, gameOver, levelWon, gameWon]);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    const onFocus = () => { setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); };
+    el.addEventListener('focus', onFocus);
+    return () => el.removeEventListener('focus', onFocus);
+  }, []);
 
   const addLog = (text: string, type: TerminalLog['type'] = 'info') => {
     setTerminalHistory(prev => [...prev, { text, type }]);
@@ -266,17 +279,16 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
 
   return (
     <div className={`h-screen w-screen relative bg-surface text-on-surface font-body-main selection:bg-primary-container selection:text-on-primary-container overflow-hidden transition-colors duration-500`}>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
       {/* CRT Scanning Overlay */}
-      <div className="fixed inset-0 z-50 scanning-overlay opacity-20 pointer-events-none"></div>
+      <div className="fixed inset-0 z-50 scanning-overlay opacity-20 pointer-events-none hidden sm:block"></div>
 
-      {/* Navigation Shell (TopAppBar) */}
-      {/* Navigation Shell moved to GlobalHeader inside App, wait we just drop it here directly */}
-      <GlobalHeader onBack={onBack} studentName={studentName} studentLevel={studentLevel} budget={budget} />
+      <GlobalHeader onBack={onBack} studentName={studentName} studentLevel={studentLevel} budget={budget} theme={theme} onThemeChange={setTheme} />
 
       {gameState === 'mode_selection' ? (
-        <main className="pt-24 pb-12 px-6 h-full flex flex-col justify-center items-center relative z-10 w-full max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h1 className="text-[40px] md:text-[60px] font-h1-display font-bold text-primary mb-4 leading-none tracking-tight shadow-primary/20 drop-shadow-md">المدينة الآمنة</h1>
+        <main className="pt-20 pb-8 px-4 sm:px-6 h-full flex flex-col justify-center items-center relative z-10 w-full max-w-5xl mx-auto">
+          <div className="text-center mb-8 sm:mb-16">
+            <h1 className="text-[24px] sm:text-[32px] md:text-[60px] font-h1-display font-bold text-primary mb-4 leading-tight tracking-tight shadow-primary/20 drop-shadow-md">المدينة الآمنة</h1>
             <p className="text-on-surface-variant max-w-2xl mx-auto text-lg">الرجاء تحديد وضع التشغيل قبل الولوج إلى خوادم المدينة المركزية</p>
           </div>
 
@@ -300,9 +312,9 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
           </div>
         </main>
       ) : gameState === 'menu' ? (
-        <main className="pt-24 pb-12 px-6 h-full flex flex-col justify-center items-center relative z-10 w-full max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-[40px] md:text-[60px] font-h1-display font-bold text-primary mb-4 leading-none tracking-tight shadow-primary/20 drop-shadow-md">المدينة الآمنة</h1>
+        <main className="pt-20 pb-8 px-4 sm:px-6 h-full flex flex-col justify-center items-center relative z-10 w-full max-w-5xl mx-auto">
+          <div className="text-center mb-6 sm:mb-12">
+            <h1 className="text-[24px] sm:text-[32px] md:text-[60px] font-h1-display font-bold text-primary mb-4 leading-tight tracking-tight shadow-primary/20 drop-shadow-md">المدينة الآمنة</h1>
             <p className="text-on-surface-variant max-w-2xl mx-auto">اختر مستوى المحاكاة الفردي. كل مستوى يزيد من مساحة الشبكة وتعقيد التهديدات.</p>
           </div>
 
@@ -342,9 +354,9 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
           </div>
         </main>
       ) : (
-        <div className="flex flex-col lg:flex-row h-full w-full pt-16">
+        <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] w-full pt-16">
           {/* Side Navigation */}
-          <aside className="order-2 lg:order-1 w-full lg:w-96 flex flex-col h-[50vh] lg:h-full bg-surface-container-low border-t lg:border-t-0 lg:border-l border-outline-variant/20 z-40 relative overflow-y-auto">
+          <aside className="order-2 lg:order-1 w-full lg:w-96 flex flex-col h-[40vh] sm:h-[45vh] lg:h-full bg-surface-container-low border-t lg:border-t-0 lg:border-l border-outline-variant/20 z-40 relative overflow-y-auto overscroll-contain">
             <div className="px-6 py-6 mb-2">
               <div className="text-primary font-h3-terminal text-[20px] font-medium mb-2 uppercase tracking-widest">توجيه العمليات</div>
               <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
@@ -394,7 +406,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
                 <span className="font-body-main font-bold">التيرمينال (Terminal)</span>
                 <TerminalIcon className="w-5 h-5"/>
               </button>
-              {showTerminal && (<div className="bg-surface-container-lowest rounded-xl flex flex-col overflow-hidden min-h-[300px] border border-outline-variant/20">
+              {showTerminal && (<div className="bg-surface-container-lowest rounded-xl flex flex-col overflow-hidden min-h-[200px] sm:min-h-[300px] max-h-[35vh] lg:max-h-none border border-outline-variant/20">
                   <div className="flex justify-between items-center p-4 border-b border-outline-variant/20 shrink-0">
                     <span className="font-label-caps text-[12px] font-bold tracking-[0.15em] text-on-surface-variant">TRAFFIC_FEED & OVERRIDE</span>
                     <LeakAdd className="text-primary w-4 h-4" />
@@ -421,11 +433,13 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
                       <input 
                         ref={inputRef}
                         type="text" 
+                        inputMode="text"
+                        enterKeyHint="send"
                         value={terminalInput}
                         onChange={e => setTerminalInput(e.target.value)}
                         disabled={isTerminalBusy}
                         placeholder="ID"
-                        className="flex-1 bg-transparent border-none outline-none text-on-surface disabled:opacity-50 min-w-0 text-[12px] font-mono"
+                        className="flex-1 bg-transparent border-none outline-none text-on-surface disabled:opacity-50 min-w-0 text-base sm:text-[12px] font-mono py-2"
                         autoComplete="off"
                         spellCheck="false"
                       />
@@ -441,26 +455,26 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
           </aside>
 
           {/* Main Workspace */}
-          <main className="order-1 lg:order-2 flex-1 flex flex-col relative z-10 w-full min-h-[50vh] lg:min-h-0">
+          <main className="order-1 lg:order-2 flex-1 flex flex-col relative z-10 w-full min-h-[50vh] lg:min-h-0 pb-10">
             {/* Center Map as Background */}
-            <div className="absolute inset-0 z-0 bg-background mix-blend-screen opacity-50 pointer-events-none"></div>
+            <div className="absolute inset-0 z-0 bg-background mix-blend-screen opacity-20 sm:opacity-50 lg:pointer-events-none pointer-events-auto"></div>
             <div className="absolute inset-0 z-0 text-left" dir="ltr">
-               <CityMap 
-                 sectors={sectors} 
-                 activeSectorId={activeSectorId} 
+               <CityMap
+                 sectors={sectors}
+                 activeSectorId={activeSectorId}
                  onSectorClick={(id) => {
                    setActiveSectorId(id);
-                   setProvinceState({ 
-                     isOpen: true, 
-                     sectorId: id, 
-                     role: null, 
+                   setProvinceState({
+                     isOpen: true,
+                     sectorId: id,
+                     role: null,
                      isAuthenticated: false,
-                     activePuzzleTarget: null 
+                     activePuzzleTarget: null
                    });
-                 }} 
-                 theme={theme} 
+                 }}
+                 theme={theme}
                />
-               <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/50 pointer-events-none"></div>
+               <div className="absolute inset-0 bg-gradient-to-t from-background/50 sm:from-background via-transparent to-background/30 sm:to-background/50 pointer-events-none"></div>
             </div>
 
             {/* Overlays / Panels */}
@@ -565,8 +579,8 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
 
             {/* Province Hack Interface (Attacker / Defender) */}
             {provinceState.isOpen && (
-              <div className="absolute inset-0 bg-surface/95 backdrop-blur-xl z-[150] flex flex-col pointer-events-auto text-right overflow-y-auto">
-                <div className="p-6 md:p-12 w-full max-w-[1440px] mx-auto min-h-screen">
+              <div className="absolute inset-0 bg-surface/95 backdrop-blur-xl z-[150] flex flex-col pointer-events-auto text-right overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="p-4 sm:p-6 md:p-12 w-full max-w-[1440px] mx-auto">
                   {/* Close button */}
                   <div className="flex justify-end mb-4">
                     <button 
@@ -581,7 +595,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
                   <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
                       <span className="font-label-caps text-label-caps text-primary mb-1 block tracking-widest">REGION_ID: {sectors.find(s => s.id === provinceState.sectorId)?.id.toUpperCase()}</span>
-                      <h2 className="font-h1-display text-primary text-3xl md:text-5xl font-bold">واجهة اختراق المحافظة - {sectors.find(s => s.id === provinceState.sectorId)?.name}</h2>
+                      <h2 className="font-h1-display text-primary text-xl sm:text-3xl md:text-5xl font-bold">واجهة اختراق المحافظة - {sectors.find(s => s.id === provinceState.sectorId)?.name}</h2>
                     </div>
                     <div className="flex items-center gap-4 glass-panel bg-surface-container-low px-4 py-2 rounded-lg border border-primary/20">
                       <div className="text-left" dir="ltr">
@@ -600,7 +614,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
 
                   {/* Role Selection if not selected */}
                   {!provinceState.role && (
-                    <div className="glass-panel p-12 text-center max-w-xl mx-auto border border-primary/30 rounded-xl shadow-2xl bg-surface-container/50">
+                    <div className="glass-panel p-6 sm:p-12 text-center max-w-xl mx-auto border border-primary/30 rounded-xl shadow-2xl bg-surface-container/50">
                       <h3 className="text-2xl font-h3-terminal text-primary mb-6">الوصول لعقدة الشبكة</h3>
                       <p className="text-on-surface-variant mb-8">يرجى تحديد بروتوكول الاتصال</p>
                       <div className="flex flex-col gap-4">
@@ -615,7 +629,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
                             const secStatuses = targetStatuses[provinceState.sectorId!] || {};
                             const isBeingAttacked = Object.values(secStatuses).some(s => s === 'warning' || s === 'critical') || currentAttack?.sectorId === provinceState.sectorId;
                             if (!isBeingAttacked) {
-                              alert('لا يوجد هجوم حالي على هذه المحافظة. الدخول مسموح للمدافع فقط أثناء الهجوم.');
+                              showToast('لا يوجد هجوم حالي على هذه المحافظة. الدخول مسموح للمدافع فقط أثناء الهجوم.', 'warning');
                               return;
                             }
                             setProvinceState(prev => ({ ...prev, role: 'defender' }));
@@ -651,7 +665,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
                               if (provinceState.role === 'defender') {
                                 const rolePw = fd.get('password') as string;
                                 if (rolePw !== 'admin') {
-                                  alert('كلمة المرور غير صحيحة!');
+                                  showToast('كلمة المرور غير صحيحة!', 'error');
                                   return;
                                 }
                                 setProvinceState(prev => ({ ...prev, isAuthenticated: true, operativeInfo: { name, ip: 'Localhost' } }));
@@ -664,18 +678,18 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
                                 <label className={`block font-mono text-[11px] mb-1 ${provinceState.role === 'attacker' ? 'text-error' : 'text-primary'}`}>
                                   {provinceState.role === 'attacker' ? 'HACKER_ALIAS' : 'ADMIN_USERNAME'}
                                 </label>
-                                <input name="name" required className="w-full bg-surface-container-lowest border-b-2 border-primary/30 focus:border-primary focus:ring-0 text-on-surface py-2 px-2 transition-all outline-none font-mono" placeholder={provinceState.role === 'attacker' ? 'أدخل اسم المخترق...' : 'أدخل اسم المدير...'} type="text"/>
+                                <input name="name" required className="w-full bg-surface-container-lowest border-b-2 border-primary/30 focus:border-primary focus:ring-0 text-on-surface py-3 px-2 min-h-[44px] transition-all outline-none font-mono text-base" placeholder={provinceState.role === 'attacker' ? 'أدخل اسم المخترق...' : 'أدخل اسم المدير...'} type="text"/>
                               </div>
                               
                               {provinceState.role === 'attacker' ? (
                                 <div>
                                   <label className="block font-mono text-[11px] text-error mb-1">SOURCE_IP_ADDRESS</label>
-                                  <input name="ip" defaultValue="192.168.1.42" required className="w-full bg-surface-container-lowest border-b-2 border-error/30 focus:border-error focus:ring-0 text-on-surface py-2 px-2 outline-none font-mono" dir="ltr" type="text"/>
+                                  <input name="ip" defaultValue="192.168.1.42" required className="w-full bg-surface-container-lowest border-b-2 border-error/30 focus:border-error focus:ring-0 text-on-surface py-3 px-2 min-h-[44px] outline-none font-mono text-base" dir="ltr" type="text"/>
                                 </div>
                               ) : (
                                 <div>
                                   <label className="block font-mono text-[11px] text-primary mb-1">SYSTEM_PASSWORD</label>
-                                  <input name="password" required className="w-full bg-surface-container-lowest border-b-2 border-primary/30 focus:border-primary focus:ring-0 text-on-surface py-2 px-2 outline-none font-mono" dir="ltr" type="password"/>
+                                  <input name="password" required className="w-full bg-surface-container-lowest border-b-2 border-primary/30 focus:border-primary focus:ring-0 text-on-surface py-3 px-2 min-h-[44px] outline-none font-mono text-base" dir="ltr" type="password"/>
                                 </div>
                               )}
                               
@@ -760,7 +774,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
                                         setTerminalHistory(prev => [...prev, { text: `تحذير: محاولة اختراق فاشلة لـ ${targetId} في ${sectorId} بواسطة ${provinceState.operativeInfo?.name}`, type: 'warning' }]);
                                       }
                                     }} className="space-y-4">
-                                      <input name="answer" required className="w-full bg-surface-container-lowest border-b-2 py-2 text-center text-xl font-mono outline-none transition-all text-error border-error/50 focus:border-error" placeholder="أدخل الحل للثغرة..." dir="ltr" type="text" autoFocus autoComplete="off"/>
+                                      <input name="answer" required className="w-full bg-surface-container-lowest border-b-2 py-3 text-center text-lg sm:text-xl font-mono outline-none min-h-[44px] transition-all text-base text-error border-error/50 focus:border-error" placeholder="أدخل الحل للثغرة..." dir="ltr" type="text" autoFocus autoComplete="off"/>
                                       <button type="submit" className="w-full flex-1 py-3 font-bold transition-all bg-error text-on-error hover:brightness-110">
                                           حقن الكود
                                       </button>
@@ -779,7 +793,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
 
                       {/* Right Column: Infrastructure Grid */}
                       <div className="lg:col-span-8">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
                           
                           {/* Targets Data */}
                           {[
@@ -806,7 +820,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
                             }
 
                             return (
-                              <div key={target.id} className={`glass-panel p-6 relative transition-all rounded-xl border bg-surface-container/40 ${colorClass}`}>
+                              <div key={target.id} className={`glass-panel p-4 sm:p-6 relative transition-all rounded-xl border bg-surface-container/40 ${colorClass}`}>
                                 <div className="flex items-start justify-between mb-8">
                                   <div className={`p-3 rounded-lg text-3xl ${bgIcon}`}>
                                     {target.icon}
@@ -832,11 +846,12 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
                                   </div>
                                   
                                   {provinceState.isAuthenticated && (
-                                    <button 
+                                    <button
+                                      aria-label={provinceState.role === 'attacker' ? `نشر الهجوم على ${target.name}` : `إصلاح الثغرة في ${target.name}`}
                                       onClick={() => {
                                         if (provinceState.role === 'attacker') {
                                           if (status === 'critical') {
-                                            alert('تم اختراق هذا الهدف مسبقاً.');
+                                            showToast('تم اختراق هذا الهدف مسبقاً.', 'warning');
                                             return;
                                           }
                                           const puz = CRYPTO_PUZZLES[Math.floor(Math.random() * CRYPTO_PUZZLES.length)];
@@ -844,14 +859,14 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
                                         } else {
                                           // defender
                                           if (status === 'safe') {
-                                            alert('هذا الهدف آمن، لا توجد ثغرة لإصلاحها.');
+                                            showToast('هذا الهدف آمن، لا توجد ثغرة لإصلاحها.', 'info');
                                             return;
                                           }
                                           const puz = DEFENDER_PUZZLES[Math.floor(Math.random() * DEFENDER_PUZZLES.length)];
                                           setProvinceState(prev => ({ ...prev, activePuzzleTarget: target.id, puzzleType: 'linux', puzzle: { question: puz.question, answer: puz.answer, hint: '' } }));
                                         }
                                       }}
-                                      className={`w-full mt-4 py-2 border font-bold transition-colors ${
+                                      className={`w-full mt-4 py-3 sm:py-2 border font-bold min-h-[44px] transition-colors ${
                                         provinceState.role === 'attacker' 
                                           ? 'border-error/50 text-error hover:bg-error/10' 
                                           : 'border-primary/50 text-primary hover:bg-primary/10'
@@ -886,7 +901,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
             )}
 
             {/* Footer HUD Bar */}
-            <footer className="h-10 border-t border-outline-variant/20 bg-surface-container-lowest/80 flex items-center px-6 gap-8 text-[11px] font-mono text-on-surface-variant z-[60] absolute bottom-0 w-full backdrop-blur-md">
+            <footer className="h-8 sm:h-10 border-t border-outline-variant/20 bg-surface-container-lowest/80 flex items-center px-4 sm:px-6 gap-4 sm:gap-8 text-[10px] sm:text-[11px] font-mono text-on-surface-variant z-[60] absolute bottom-0 w-full backdrop-blur-md">
               <div className="flex items-center gap-2 border-l border-outline-variant/20 pl-6 h-full">
                 <span className={`w-2 h-2 rounded-full ${currentAttack ? 'bg-error animate-pulse' : 'bg-primary animate-pulse'}`}></span>
                 <span>{currentAttack ? 'SYS_CRITICAL' : 'SYSTEM_OK'}</span>
@@ -899,7 +914,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({ onBack, studentN
                 <Schedule className="w-3 h-3" />
                 <span>UTC+3:00 SYR</span>
               </div>
-              <div className="mr-auto font-label-caps text-primary tracking-widest font-bold">
+              <div className="mr-auto font-label-caps text-primary tracking-widest font-bold hidden sm:block">
                   SECURE_CITY_ALPHA_V.0.9.2
               </div>
             </footer>

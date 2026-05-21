@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Popup, CircleMarker, useMap } from 'react-leaflet';
+import React, { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Polyline, Popup, CircleMarker, useMap, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 
 export interface Sector {
@@ -77,6 +77,15 @@ export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSec
     }
   };
 
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   return (
     <div className="w-full h-full relative" style={{ isolation: 'isolate' }}>
       <MapContainer 
@@ -84,13 +93,15 @@ export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSec
         zoom={6} 
         style={{ height: '100%', width: '100%', background: theme === 'light' ? '#F5F7FF' : '#0f172a' }}
         zoomControl={false}
+        tap={true}
       >
+        <ZoomControl position="bottomright" />
         <TileLayer
           key={theme}
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url={theme === 'light' ? "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"}
         />
-        <div className="absolute inset-0 z-[100] scanning-overlay opacity-20 pointer-events-none"></div>
+        <div className="absolute inset-0 z-[100] scanning-overlay opacity-20 pointer-events-none hidden sm:block"></div>
         <MapBounds sectors={sectors} />
         
         {connections.map(([id1, id2], i) => {
@@ -136,7 +147,7 @@ export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSec
               )}
               <CircleMarker
                 center={[lat, lng]}
-                radius={8}
+                radius={isMobile ? 14 : 8}
                 color={theme === 'light' ? '#F5F7FF' : '#0f172a'}
                 weight={2}
                 fillColor={color}

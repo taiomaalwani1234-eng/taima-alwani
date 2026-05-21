@@ -1,19 +1,17 @@
-import { GoogleGenAI, Type, FunctionDeclaration, GenerateContentResponse } from "@google/genai";
+import { chatWithFunctions, FunctionDef } from './aiClient';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-export const updateNetworkFunctionDeclaration: FunctionDeclaration = {
+export const updateNetworkFunctionDeclaration: FunctionDef = {
   name: "updateSectorStatus",
   description: "Update the simulated smart city map by changing the status of a specific sector.",
   parameters: {
-    type: Type.OBJECT,
+    type: "object",
     properties: {
       targetSectorId: {
-        type: Type.STRING,
+        type: "string",
         description: "The ID of the sector to update. Valid values: central_hub, power_grid, hospital, data_center, bank, comm_tower.",
       },
       status: {
-        type: Type.STRING,
+        type: "string",
         description: "The new threat/operational status of the sector. Valid values: safe, warning, critical, offline.",
       }
     },
@@ -23,26 +21,20 @@ export const updateNetworkFunctionDeclaration: FunctionDeclaration = {
 
 export async function chatWithCyberAssistant(
   prompt: string,
-  history: any[], // previous parts
+  history: any[],
 ) {
-  const contents = [...history, { role: 'user', parts: [{ text: prompt }] }];
-  
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview",
-      contents,
-      config: {
-        tools: [
-          { functionDeclarations: [updateNetworkFunctionDeclaration] }
-        ],
-        systemInstruction: "You are Locus AI, the central intelligence and cybersecurity advisor for SecureCity. The city consists of 6 sectors: central_hub, power_grid, hospital, data_center, bank, and comm_tower. You act as a gamified simulation master. If the user asks to attack, hack, or defend a sector, you MUST call 'updateSectorStatus' to reflect the resulting situation on the interactive map (e.g., setting status to 'warning', 'critical', or 'offline' for attacks, and 'safe' for defense). Respond in character: precise, analytical, and editorial. You MUST ALWAYS speak strictly in Arabic.",
-      }
-    });
+    const systemInstruction = "You are Locus AI, the central intelligence and cybersecurity advisor for SecureCity. The city consists of 6 sectors: central_hub, power_grid, hospital, data_center, bank, and comm_tower. You act as a gamified simulation master. If the user asks to attack, hack, or defend a sector, you MUST call 'updateSectorStatus' to reflect the resulting situation on the interactive map (e.g., setting status to 'warning', 'critical', or 'offline' for attacks, and 'safe' for defense). Respond in character: precise, analytical, and editorial. You MUST ALWAYS speak strictly in Arabic.";
 
-    return response;
+    const mappedHistory = history.map((h: any) => ({
+      role: h.role === "model" ? "assistant" : h.role,
+      content: h.parts?.[0]?.text || h.content || "",
+    }));
+
+    const result = await chatWithFunctions(prompt, mappedHistory, systemInstruction, [updateNetworkFunctionDeclaration]);
+    return result;
   } catch (err) {
-    console.error("Gemini Error:", err);
+    console.error("AI Error:", err);
     throw err;
   }
 }
-

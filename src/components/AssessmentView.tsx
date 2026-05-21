@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { GlobalHeader } from './GlobalHeader';
 import { getAssessmentQuestions, evaluateLevel, AssessmentQuestion } from '../data/assessment';
 import { LogOut, Terminal, CheckCircle2, ChevronDown, Activity, Sparkles, Map as MapIcon, Bot, Route } from 'lucide-react';
-import { GoogleGenAI } from '@google/genai';
 import Markdown from 'react-markdown';
-
-const ai = new GoogleGenAI({ apiKey: (import.meta as any).env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY });
+import { generateText, generateJSON } from '../services/aiClient';
 
 interface MindMapNode {
   title: string;
@@ -138,16 +136,10 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ onBack, studentN
 
 تأكد من أن النص بالعربية الفصحى. استخدم تنسيق JSON صحيح.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
-      });
+      const responseText = await generateJSON(prompt);
 
-      if (response.text) {
-        const parsed = JSON.parse(response.text);
+      if (responseText) {
+        const parsed = JSON.parse(responseText);
         setAiPlan(parsed.planMarkdown || 'تم إنشاء الخطة.');
         setAiMindMap(parsed.mindMap || null);
       } else {
@@ -177,12 +169,8 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ onBack, studentN
 المطلوب: قدم تلميحاً ذكياً وموجزاً (في سطرين أو ثلاثة كحد أقصى) يساعد المتدرب على الوصول للإجابة دون إعطائه الإجابة بشكل مباشر.
 يجب أن يكون التلميح باللغة العربية.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
-
-      setCurrentHint(response.text || 'لم أتمكن من استخراج تلميح في الوقت الحالي.');
+      const hint = await generateText(prompt);
+      setCurrentHint(hint || 'لم أتمكن من استخراج تلميح في الوقت الحالي.');
       setShowHintModal(false); // Hide modal, show hint in the UI
     } catch (error) {
        console.error('Failed to get hint:', error);

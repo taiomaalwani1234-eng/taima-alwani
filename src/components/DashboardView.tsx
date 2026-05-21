@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { GlobalHeader } from './GlobalHeader';
-import { ShieldAlert, Trophy, Target, FileText, Activity, Key, BookOpen, Sun, Moon } from 'lucide-react';
+import { ShieldAlert, Trophy, Target, FileText, Activity, Key, BookOpen, Sun, Moon, LogOut } from 'lucide-react';
+import { getCurrentUser } from '../services/backendApi';
 
 interface DashboardViewProps {
   studentName: string;
   studentLevel: string;
-  onSelectGame: (game: 'city' | 'millionaire' | 'flashcards' | 'assessment' | 'crypto' | 'courses') => void;
+  onSelectGame: (game: 'city' | 'millionaire' | 'flashcards' | 'assessment' | 'crypto' | 'courses' | 'admin') => void;
+  userId?: number;
+  onLogout?: () => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ studentName, studentLevel, onSelectGame }) => {
+export const DashboardView: React.FC<DashboardViewProps> = ({ studentName, studentLevel, onSelectGame, userId, onLogout }) => {
   const [theme, setTheme] = useState<'light' | 'dark'>(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
 
   React.useEffect(() => {
@@ -26,7 +29,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ studentName, stude
   
   
   return (
-    <div className="w-full h-full bg-background text-on-background flex flex-col items-center justify-center p-4 sm:p-8 overflow-y-auto transition-colors duration-500 relative">
+    <div className="w-full h-full bg-background text-on-background flex flex-col items-center p-4 sm:p-8 overflow-y-auto transition-colors duration-500 relative">
       
       <div 
         className="absolute inset-0 z-0 opacity-10 pointer-events-none mix-blend-luminosity"
@@ -45,7 +48,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ studentName, stude
          {theme === 'dark' ? <Sun className="w-5 h-5"/> : <Moon className="w-5 h-5"/>}
       </button>
 
-      <div className="w-full max-w-6xl py-8 z-10 relative">
+      {onLogout && (
+        <button 
+          onClick={onLogout}
+          className="absolute top-6 left-20 transition-all duration-300 active:scale-95 p-2 rounded-full text-on-background hover:bg-error/20 z-10 flex items-center gap-2"
+          title="تسجيل الخروج"
+        >
+          <LogOut className="w-5 h-5"/>
+          <span className="text-[10px] uppercase tracking-widest font-bold">خروج</span>
+        </button>
+      )}
+
+      <div className="w-full max-w-6xl py-8 z-10 relative mx-auto my-auto">
         <header className="mb-12 border-b border-outline/20 pb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 transition-colors duration-500 w-full">
           <div>
             <h1 className="text-4xl sm:text-5xl font-serif italic font-light tracking-tighter text-primary">مركز الأكاديمية</h1>
@@ -156,6 +170,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ studentName, stude
               <span className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold border-r-2 border-primary`}>مسابقات</span>
             </div>
           </button>
+
+          {/* Admin Panel - Only for admin user */}
+          {studentName === 'المدير' && (
+          <button 
+            onClick={() => onSelectGame('admin')}
+            className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-error/30 rounded-2xl hover:shadow-[-12px_12px_0px_var(--sys-error)] transition-all hover:-translate-y-1 flex flex-col items-start h-full col-span-1 md:col-span-2 lg:col-span-3`}
+          >
+            <div className={`w-12 h-12 bg-error/10 text-error border border-error/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-error transition-colors mb-4`}>
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <h2 className="text-2xl font-serif italic mb-4">لوحة الإدارة</h2>
+            <p className="text-sm opacity-70 mb-auto leading-relaxed font-sans">
+              إدارة المستخدمين، عرض السجلات، التحكم بالبيانات والصلاحيات.
+            </p>
+            <div className="flex gap-4 mt-6">
+              <span className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-error/10 text-error font-bold border-r-2 border-error`}>إدارة</span>
+            </div>
+          </button>
+          )}
 
           {/* SecureCity Map Card */}
           <button 

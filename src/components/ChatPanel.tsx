@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { chatWithCyberAssistant } from '../services/geminiService';
-import { GenerateContentResponse } from '@google/genai';
 
 interface Message {
   role: 'user' | 'model';
@@ -20,9 +19,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onMapUpdate }) => {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   
-  // Store raw history for the GenAI SDK
-  const [history, setHistory] = useState<any[]>([
-    { role: 'model', parts: [{ text: 'تم اتصال شبكة مدينة آمنة. أنا الذكاء الاصطناعي Locus، مستشارك للأمن السيبراني. يمكنك إطلاق هجمات محاكاة أو نشر دفاعات. كيف سنمضي قدما؟' }] }
+  const [history, setHistory] = useState<{ role: string; content: string }[]>([
+    { role: 'assistant', content: 'تم اتصال شبكة مدينة آمنة. أنا الذكاء الاصطناعي Locus، مستشارك للأمن السيبراني. يمكنك إطلاق هجمات محاكاة أو نشر دفاعات. كيف سنمضي قدما؟' }
   ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -37,33 +35,26 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onMapUpdate }) => {
     const userText = input.trim();
     setInput('');
     
-    // Add user message to UI
     setMessages(prev => [...prev, { role: 'user', text: userText }]);
     
-    // Convert current history to sending format
     const tempHistory = [...history];
     setIsTyping(true);
     
     try {
-      const response: GenerateContentResponse = await chatWithCyberAssistant(userText, tempHistory);
+      const response = await chatWithCyberAssistant(userText, tempHistory);
       
-      // Look for function calls AND text
       let textResponse = response.text || '';
       
-      const functionCalls = response.functionCalls;
-      if (functionCalls && functionCalls.length > 0) {
-        // Execute the map updates
-        for (const call of functionCalls) {
-          if (call.name === 'updateSectorStatus' && call.args) {
-            const { targetSectorId, status } = call.args as any;
-            if (targetSectorId && status) {
-              onMapUpdate(targetSectorId, status);
-            }
-          }
+      const functionCall = response.functionCall;
+      if (functionCall && functionCall.name === 'updateSectorStatus') {
+        const args = JSON.parse(functionCall.arguments || '{}');
+        const { targetSectorId, status } = args;
+        if (targetSectorId && status) {
+          onMapUpdate(targetSectorId, status);
         }
       }
       
-      if (!textResponse && functionCalls && functionCalls.length > 0) {
+      if (!textResponse && functionCall) {
           textResponse = "لقد قمت بتحديث التمثيل الآلي للشبكة من أجلك.";
       }
 
@@ -71,8 +62,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onMapUpdate }) => {
       
       setHistory(prev => [
         ...prev, 
-        { role: 'user', parts: [{ text: userText }] },
-        response.candidates?.[0]?.content || { role: 'model', parts: [{ text: textResponse }] }
+        { role: 'user', content: userText },
+        { role: 'assistant', content: textResponse }
       ]);
       
     } catch (err) {
