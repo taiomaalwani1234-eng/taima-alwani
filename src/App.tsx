@@ -17,6 +17,8 @@ export default function App() {
   const [studentName, setStudentName] = useState('');
   const [studentLevel, setStudentLevel] = useState('');
   const [userId, setUserId] = useState<number>(0);
+  const [tutorialMode, setTutorialMode] = useState<boolean>(false);
+  const [avatarSeed, setAvatarSeed] = useState<string>('Aneka');
 
   const handleLogin = (name: string, level: string, id: number) => {
     setStudentName(name);
@@ -48,6 +50,11 @@ export default function App() {
     }
   };
 
+  const handleSelectGame = (game: ViewState, isTutorial: boolean = false) => {
+    setTutorialMode(isTutorial);
+    setCurrentView(game);
+  };
+
   return (
     <div dir="rtl" className="w-screen h-screen overflow-hidden bg-background text-on-background selection:bg-primary selection:text-white" style={{ fontFamily: 'Georgia, serif' }}>
       {currentView === 'auth' && (
@@ -58,7 +65,9 @@ export default function App() {
         <DashboardView 
           studentName={studentName} 
           studentLevel={studentLevel} 
-          onSelectGame={(game) => setCurrentView(game as ViewState)} 
+          avatarSeed={avatarSeed}
+          onAvatarSelect={setAvatarSeed}
+          onSelectGame={(game, tutorial) => handleSelectGame(game as ViewState, tutorial)} 
           userId={userId}
           onLogout={() => {
             localStorage.removeItem('taima_user');
@@ -74,15 +83,26 @@ export default function App() {
         <MillionaireView 
           studentName={studentName} 
           onBack={() => setCurrentView('dashboard')} 
+          isTutorial={tutorialMode}
         />
       )}
       
       {currentView === 'city' && (
-        <SecureCityView studentName={studentName} studentLevel={studentLevel} onBack={() => setCurrentView('dashboard')} />
+        <SecureCityView 
+          studentName={studentName} 
+          studentLevel={studentLevel} 
+          avatarSeed={avatarSeed}
+          onAvatarSelect={setAvatarSeed}
+          onBack={() => setCurrentView('dashboard')} 
+          isTutorial={tutorialMode}
+        />
       )}
 
       {currentView === 'flashcards' && (
-        <FlashcardsView onBack={() => setCurrentView('dashboard')} />
+        <FlashcardsView 
+          onBack={() => setCurrentView('dashboard')} 
+          isTutorial={tutorialMode}
+        />
       )}
 
       {currentView === 'assessment' && (
@@ -90,15 +110,22 @@ export default function App() {
           studentName={studentName}
           onBack={() => setCurrentView('dashboard')} 
           onUpdateLevel={handleUpdateLevel}
+          isTutorial={tutorialMode}
         />
       )}
 
       {currentView === 'crypto' && (
-        <CryptoPuzzleView onBack={() => setCurrentView('dashboard')} />
+        <CryptoPuzzleView 
+          onBack={() => setCurrentView('dashboard')} 
+          isTutorial={tutorialMode}
+        />
       )}
 
       {currentView === 'courses' && (
-        <CoursesView onBack={() => setCurrentView('dashboard')} />
+        <CoursesView 
+          onBack={() => setCurrentView('dashboard')} 
+          isTutorial={tutorialMode}
+        />
       )}
 
       {currentView === 'admin' && (

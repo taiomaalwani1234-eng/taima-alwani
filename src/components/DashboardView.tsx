@@ -1,214 +1,596 @@
-import React, { useState } from 'react';
-import { GlobalHeader } from './GlobalHeader';
-import { ShieldAlert, Trophy, Target, FileText, Activity, Key, BookOpen, Sun, Moon, LogOut } from 'lucide-react';
-import { getCurrentUser } from '../services/backendApi';
+import React, { useState } from "react";
+import { GlobalHeader } from "./GlobalHeader";
+import {
+  ShieldAlert,
+  Trophy,
+  Target,
+  FileText,
+  Activity,
+  Key,
+  BookOpen,
+  Sun,
+  Moon,
+  Bell as Notifications,
+  Settings,
+  User,
+  Lock,
+  Mail,
+  HelpCircle,
+  X,
+} from "lucide-react";
 
 interface DashboardViewProps {
   studentName: string;
   studentLevel: string;
-  onSelectGame: (game: 'city' | 'millionaire' | 'flashcards' | 'assessment' | 'crypto' | 'courses' | 'admin') => void;
-  userId?: number;
-  onLogout?: () => void;
+  avatarSeed?: string;
+  onAvatarSelect?: (seed: string) => void;
+  onSelectGame: (
+    game:
+      | "city"
+      | "millionaire"
+      | "flashcards"
+      | "assessment"
+      | "crypto"
+      | "courses",
+    tutorial?: boolean,
+  ) => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ studentName, studentLevel, onSelectGame, userId, onLogout }) => {
-  const [theme, setTheme] = useState<'light' | 'dark'>(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+export const AVATAR_SEEDS = [
+  "Aneka",
+  "Mia",
+  "Sofia",
+  "Lily",
+  "Lola",
+  "Kiki",
+  "Zoe",
+  "Felix",
+  "Jasper",
+  "Ryan",
+];
+
+export const DashboardView: React.FC<DashboardViewProps> = ({
+  studentName,
+  studentLevel,
+  avatarSeed = "Aneka",
+  onAvatarSelect,
+  onSelectGame,
+}) => {
+  const [theme, setTheme] = useState<"light" | "dark">(
+    document.documentElement.classList.contains("dark") ? "dark" : "light",
+  );
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettingsProfile, setShowSettingsProfile] = useState(false);
+  const [showAccountForm, setShowAccountForm] = useState<"name" | "password" | "email" | null>(null);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   React.useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
     } else {
-      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove("dark");
     }
   }, [theme]);
 
-  
-  const textClass = theme === 'dark' ? 'text-[#d9e2ff]' : 'text-on-background';
-  
-  
-  
-  
+  const textClass = theme === "dark" ? "text-[#d9e2ff]" : "text-on-background";
+
+  const motivationalQuotes = [
+    "حان وقت حماية النظام، هل أنت مستعد للتحدي اليوم؟",
+    "المدينة الآمنة بانتظارك، لا تدع المخترقين يفوزون بمحاولاتهم!",
+    "تدريبك اليومي يجعلك أقوى، استكمل دوراتك لتصل للاحتراف.",
+    "راجع أهدافك في الخطة الدراسية الذكية وانطلق!",
+  ];
+
   return (
     <div className="w-full h-full bg-background text-on-background flex flex-col items-center p-4 sm:p-8 overflow-y-auto transition-colors duration-500 relative">
-      
-      <div 
-        className="absolute inset-0 z-0 opacity-10 pointer-events-none mix-blend-luminosity"
+      <div
+        className="absolute inset-0 z-0 opacity-10 pointer-events-none mix-blend-luminosity fixed"
         style={{
-          backgroundImage: 'url("https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=2000&auto=format&fit=crop")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundImage:
+            'url("https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=2000&auto=format&fit=crop")',
+          backgroundSize: "cover",
+          backgroundPosition: "center",
         }}
       />
-      
-      <button 
-        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
-        className="absolute top-6 left-6 transition-all duration-300 active:scale-95 p-2 rounded-full text-on-background hover:bg-primary/20 z-10"
-        title="تبديل الإضاءة"
-      >
-         {theme === 'dark' ? <Sun className="w-5 h-5"/> : <Moon className="w-5 h-5"/>}
-      </button>
 
-      {onLogout && (
-        <button 
-          onClick={onLogout}
-          className="absolute top-6 left-20 transition-all duration-300 active:scale-95 p-2 rounded-full text-on-background hover:bg-error/20 z-10 flex items-center gap-2"
-          title="تسجيل الخروج"
-        >
-          <LogOut className="w-5 h-5"/>
-          <span className="text-[10px] uppercase tracking-widest font-bold">خروج</span>
-        </button>
-      )}
+      <div className="w-full max-w-6xl z-[60] md:z-20 flex justify-between md:justify-end items-center mb-8 bg-surface/90 md:bg-surface backdrop-blur-lg md:backdrop-blur-none border border-outline-variant/30 rounded-full md:rounded-2xl p-2 md:p-4 shadow-xl md:shadow-sm fixed top-6 left-4 right-4 md:relative md:w-full md:max-w-6xl gap-2 md:gap-4 transition-all duration-300">
+        <div className="flex items-center gap-1 md:gap-4 w-full md:w-auto justify-around md:justify-end relative">
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="transition-all duration-300 active:scale-95 p-3 md:p-2 rounded-full text-on-surface hover:bg-primary/10 border border-transparent hover:border-primary/20 flex flex-col md:flex-row items-center gap-1"
+            title="تبديل الإضاءة"
+          >
+            {theme === "dark" ? (
+              <Sun className="w-5 h-5 text-primary" />
+            ) : (
+              <Moon className="w-5 h-5 text-primary" />
+            )}
+            <span className="text-[9px] font-bold md:hidden uppercase opacity-60">الوضعية</span>
+          </button>
 
-      <div className="w-full max-w-6xl py-8 z-10 relative mx-auto my-auto">
-        <header className="mb-12 border-b border-outline/20 pb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 transition-colors duration-500 w-full">
-          <div>
-            <h1 className="text-4xl sm:text-5xl font-serif italic font-light tracking-tighter text-primary">مركز الأكاديمية</h1>
-            <p className="text-[10px] uppercase tracking-widest mt-2 opacity-60 font-bold">اختر وحدة التدريب</p>
+          <div className="static">
+            <button
+              onClick={() => {
+                setShowNotifications(!showNotifications);
+                setShowSettingsProfile(false);
+                setShowHelp(false);
+              }}
+              className={`text-primary active:scale-95 p-3 md:p-2 rounded-full transition-all border border-transparent flex flex-col md:flex-row items-center gap-1 ${showNotifications ? 'bg-primary/20 border-primary/30' : 'hover:bg-primary/10 hover:border-primary/20'}`}
+            >
+              <div className="relative">
+                <Notifications className="w-5 h-5" />
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full animate-pulse shadow-[0_0_8px_rgba(255,0,0,0.8)]"></span>
+              </div>
+              <span className="text-[9px] font-bold md:hidden uppercase opacity-60">التنبيهات</span>
+            </button>
           </div>
-          <div className="text-right sm:text-left">
-            <p className="text-[10px] uppercase tracking-widest opacity-50 mb-1">العميل النشط</p>
-            <p className="font-bold text-lg text-secondary">{studentName}</p>
-            <p className="text-primary text-[10px] uppercase font-bold tracking-widest">تصريح {studentLevel}</p>
+
+          <div className="static">
+            <button
+              onClick={() => {
+                setShowSettingsProfile(!showSettingsProfile);
+                setShowAvatarPicker(false);
+                setShowNotifications(false);
+                setShowHelp(false);
+              }}
+              title="الإعدادات الشخصية"
+              className={`flex flex-col md:flex-row items-center gap-1 p-3 md:p-2 rounded-full transition-all border border-transparent active:scale-95 ${showSettingsProfile ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-primary hover:bg-primary/10 hover:border-primary/20'}`}
+            >
+              <Settings className="w-5 h-5" />
+              <span className="text-[9px] font-bold md:hidden uppercase opacity-60">الاعدادات</span>
+            </button>
+          </div>
+
+          <div className="static">
+            <button
+              onClick={() => {
+                setShowHelp(!showHelp);
+                setShowNotifications(false);
+                setShowSettingsProfile(false);
+              }}
+              title="كيفية اللعب"
+              className={`flex flex-col md:flex-row items-center gap-1 p-3 md:p-2 rounded-full transition-all border border-transparent active:scale-95 ${showHelp ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-primary hover:bg-primary/10 hover:border-primary/20'}`}
+            >
+              <HelpCircle className="w-5 h-5" />
+              <span className="text-[9px] font-bold md:hidden uppercase opacity-60">كيفية اللعب</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Global Overlays (Backdrop) */}
+        {(showNotifications || showSettingsProfile || showHelp) && (
+          <div 
+            className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-[65] md:hidden animate-in fade-in"
+            onClick={() => {
+              setShowNotifications(false);
+              setShowSettingsProfile(false);
+              setShowHelp(false);
+            }}
+          />
+        )}
+
+        {showNotifications && (
+          <div className="absolute top-full right-4 left-4 md:left-auto md:right-0 mt-3 md:w-80 bg-surface/95 backdrop-blur-md border border-outline-variant/30 rounded-2xl shadow-2xl p-5 z-[70] animate-in fade-in slide-in-from-top-2">
+            <div className="flex justify-between items-center mb-4 border-b border-primary/20 pb-2">
+              <button onClick={() => setShowNotifications(false)} className="text-primary/50 hover:text-primary transition-colors hover:bg-primary/10 p-1 rounded-full"><X className="w-4 h-4"/></button>
+              <h4 className="font-bold text-[14px] text-primary text-right">
+                الإشعارات اليومية
+              </h4>
+            </div>
+            <div className="space-y-3 text-right">
+              {motivationalQuotes.map((quote, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 bg-primary/5 border border-primary/10 rounded-lg text-xs text-on-surface font-medium leading-relaxed"
+                >
+                  {quote}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {showSettingsProfile && (
+          <div className="absolute top-full right-4 left-4 md:left-auto md:right-0 mt-3 md:w-80 bg-surface/95 backdrop-blur-md border border-outline-variant/30 rounded-2xl shadow-2xl p-5 z-[70] text-right animate-in fade-in slide-in-from-top-2 max-h-[75vh] overflow-y-auto custom-scrollbar">
+            <div className="flex justify-between items-center mb-4 border-b border-outline-variant/20 pb-2">
+              <button onClick={() => setShowSettingsProfile(false)} className="text-primary/50 hover:text-primary transition-colors hover:bg-primary/10 p-1 rounded-full"><X className="w-4 h-4"/></button>
+              <h4 className="font-bold text-[14px] text-primary">الإعدادات والملف الشخصي</h4>
+            </div>
+            
+            <div className="flex flex-col items-center mb-6 border-b border-outline-variant/20 pb-4">
+              <div
+                className="w-20 h-20 rounded-full bg-surface-variant border-2 border-primary/30 overflow-hidden cursor-pointer hover:border-primary/60 transition-all hover:scale-105 mb-3 group relative shadow-md"
+                onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+                title="تغيير الشخصية"
+              >
+                <img
+                  src={`https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <User className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-lg text-primary leading-none mb-1">
+                  {studentName}
+                </p>
+                <p className="text-[10px] uppercase tracking-widest opacity-60 font-bold bg-primary/10 px-2 py-0.5 rounded-full inline-block">
+                  المستوى: {studentLevel}
+                </p>
+              </div>
+            </div>
+
+            {showAvatarPicker && onAvatarSelect && (
+              <div className="mb-6 p-4 bg-surface-variant/50 rounded-xl border border-outline-variant/30 animate-in zoom-in-95">
+                <h5 className="font-bold text-xs text-primary mb-3 text-center">
+                  اختر شخصيتك المفضلة
+                </h5>
+                <div className="grid grid-cols-5 gap-2">
+                  {AVATAR_SEEDS.map((seed) => (
+                    <button
+                      key={seed}
+                      onClick={() => onAvatarSelect(seed)}
+                      className={`aspect-square rounded-lg overflow-hidden border-2 transition-all hover:scale-110 ${avatarSeed === seed ? "border-primary ring-2 ring-primary/30 scale-105" : "border-transparent hover:border-primary/50"}`}
+                    >
+                      <img
+                        src={`https://api.dicebear.com/7.x/micah/svg?seed=${seed}&backgroundColor=b9d8e1`}
+                        alt={seed}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4 mb-6">
+              <h4 className="font-bold text-xs uppercase tracking-widest text-on-surface/50 border-b border-outline-variant/20 pb-1">
+                إعدادات الحساب
+              </h4>
+              
+              {showAccountForm ? (
+                <div className="bg-surface-variant/30 p-4 rounded-xl border border-primary/20 animate-in slide-in-from-right-2">
+                  <div className="flex justify-between items-center mb-3">
+                    <button 
+                      onClick={() => setShowAccountForm(null)}
+                      className="text-[10px] text-primary hover:underline"
+                    >
+                      إلغاء
+                    </button>
+                    <span className="text-xs font-bold text-primary">
+                      {showAccountForm === "name" ? "تغيير الاسم" : showAccountForm === "email" ? "البريد الإلكتروني" : "كلمة المرور"}
+                    </span>
+                  </div>
+                  <input 
+                    type={showAccountForm === "password" ? "password" : "text"}
+                    placeholder={showAccountForm === "name" ? "الاسم الجديد" : showAccountForm === "email" ? "البريد الجديد" : "كلمة المرور الجديدة"}
+                    className="w-full bg-surface border border-outline-variant/50 rounded-lg p-2.5 text-sm mb-3 focus:outline-none focus:border-primary transition-all"
+                  />
+                  <button 
+                    onClick={() => setShowAccountForm(null)}
+                    className="w-full py-2.5 bg-primary text-white text-xs font-bold rounded-lg hover:brightness-110 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                  >
+                    تحديث البيانات
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <button 
+                    onClick={() => setShowAccountForm("name")}
+                    className="w-full flex justify-between items-center bg-surface-variant/30 hover:bg-surface-variant/70 p-3 rounded-xl text-sm border border-outline-variant/30 transition-all hover:translate-x-1"
+                  >
+                    <User className="w-4 h-4 text-primary" />
+                    <span className="text-on-surface font-medium">تعديل الاسم المستعار</span>
+                  </button>
+                  <button 
+                    onClick={() => setShowAccountForm("email")}
+                    className="w-full flex justify-between items-center bg-surface-variant/30 hover:bg-surface-variant/70 p-3 rounded-xl text-sm border border-outline-variant/30 transition-all hover:translate-x-1"
+                  >
+                    <Mail className="w-4 h-4 text-primary" />
+                    <span className="text-on-surface font-medium">البريد الإلكتروني</span>
+                  </button>
+                  <button 
+                    onClick={() => setShowAccountForm("password")}
+                    className="w-full flex justify-between items-center bg-surface-variant/30 hover:bg-surface-variant/70 p-3 rounded-xl text-sm border border-outline-variant/30 transition-all hover:translate-x-1"
+                  >
+                    <Lock className="w-4 h-4 text-primary" />
+                    <span className="text-on-surface font-medium">تغيير كلمة المرور</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <h4 className="font-bold text-xs uppercase tracking-widest text-on-surface/50 border-b border-outline-variant/20 pb-1">
+                رصيد الألعاب والإنجازات
+              </h4>
+              <div className="grid gap-2">
+                <div className="flex justify-between items-center bg-surface-variant/50 p-3 rounded-xl text-sm border border-outline-variant/30">
+                  <span className="font-bold font-mono text-primary">$ 5,000</span>
+                  <span className="flex items-center gap-2 text-xs opacity-80">
+                    محاكاة المدينة <Activity className="w-3.5 h-3.5 text-primary" />
+                  </span>
+                </div>
+                <div className="flex justify-between items-center bg-surface-variant/50 p-3 rounded-xl text-sm border border-outline-variant/30">
+                  <span className="font-bold font-mono text-secondary">1,250 pt</span>
+                  <span className="flex items-center gap-2 text-xs opacity-80">
+                    المليونير السيبراني <Trophy className="w-3.5 h-3.5 text-secondary" />
+                  </span>
+                </div>
+                <div className="flex justify-between items-center bg-surface-variant/50 p-3 rounded-xl text-sm border border-outline-variant/30">
+                  <span className="font-bold font-mono text-emerald-500">12</span>
+                  <span className="flex items-center gap-2 text-xs opacity-80">
+                    ألغاز التشفير <Key className="w-3.5 h-3.5 text-emerald-500" />
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showHelp && (
+          <div className="absolute top-full right-4 left-4 md:left-auto md:right-0 mt-3 md:w-96 max-h-[75vh] overflow-y-auto bg-surface/95 backdrop-blur-md border border-outline-variant/30 rounded-2xl shadow-2xl p-5 z-[70] animate-in fade-in slide-in-from-top-2 custom-scrollbar">
+            <div className="flex justify-between items-center mb-4 border-b border-primary/20 pb-2">
+              <button onClick={() => setShowHelp(false)} className="text-primary/50 hover:text-primary transition-colors hover:bg-primary/10 p-1 rounded-full"><X className="w-4 h-4"/></button>
+              <h4 className="font-bold text-[14px] text-primary text-right">
+                دليل الألعاب والدروس
+              </h4>
+            </div>
+            <div className="space-y-3 text-right">
+              <button
+                onClick={() => onSelectGame("city", true)}
+                className="w-full text-right bg-surface-variant/40 hover:bg-primary/5 p-4 rounded-xl border border-outline-variant/30 transition-all group flex flex-row-reverse gap-3 items-center"
+              >
+                <div className="p-3 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors shrink-0">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <div>
+                  <h5 className="font-bold text-primary text-sm mb-1">محاكاة المدينة الآمنة</h5>
+                  <p className="text-[11px] text-on-surface opacity-70 leading-normal">
+                    تعلم كيفية حماية البنية التحتية والمباني من الهجمات المباشرة.
+                  </p>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => onSelectGame("millionaire", true)}
+                className="w-full text-right bg-surface-variant/40 hover:bg-secondary/5 p-4 rounded-xl border border-outline-variant/30 transition-all group flex flex-row-reverse gap-3 items-center"
+              >
+                <div className="p-3 rounded-xl bg-secondary/10 text-secondary group-hover:bg-secondary group-hover:text-white transition-colors shrink-0">
+                  <Trophy className="w-5 h-5" />
+                </div>
+                <div>
+                  <h5 className="font-bold text-secondary text-sm mb-1">المليونير السيبراني</h5>
+                  <p className="text-[11px] text-on-surface opacity-70 leading-normal">
+                    تحديات الأسئلة المتدرجة، اختبر معلوماتك واحصل على المليون الافتراضي.
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => onSelectGame("crypto", true)}
+                className="w-full text-right bg-surface-variant/40 hover:bg-emerald-500/5 p-4 rounded-xl border border-outline-variant/30 transition-all group flex flex-row-reverse gap-3 items-center"
+              >
+                <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-colors shrink-0">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h5 className="font-bold text-emerald-500 text-sm mb-1">تشفير وألغاز</h5>
+                  <p className="text-[11px] text-on-surface opacity-70 leading-normal">
+                    حل شفرات معقدة واكتشف أوامر الأنظمة المخفية.
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => onSelectGame("courses", true)}
+                className="w-full text-right bg-surface-variant/40 hover:bg-blue-500/5 p-4 rounded-xl border border-outline-variant/30 transition-all group flex flex-row-reverse gap-3 items-center"
+              >
+                <div className="p-3 rounded-xl bg-blue-500/10 text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors shrink-0">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h5 className="font-bold text-blue-500 text-sm mb-1">الدورات التعليمية</h5>
+                  <p className="text-[11px] text-on-surface opacity-70 leading-normal">
+                    مسار تعليمي متكامل من المبتدئ إلى المحترف مع AI.
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => onSelectGame("assessment", true)}
+                className="w-full text-right bg-surface-variant/40 hover:bg-orange-500/5 p-4 rounded-xl border border-outline-variant/30 transition-all group flex flex-row-reverse gap-3 items-center"
+              >
+                <div className="p-3 rounded-xl bg-orange-500/10 text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0">
+                  <Target className="w-5 h-5" />
+                </div>
+                <div>
+                  <h5 className="font-bold text-orange-500 text-sm mb-1">تحديد المستوى الذكي</h5>
+                  <p className="text-[11px] text-on-surface opacity-70 leading-normal">
+                    اختبار تقييمي يبني لك خطة دراسية مخصصة بمساعدة AI.
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="w-full max-w-6xl py-2 pt-24 md:pt-2 z-10 relative">
+        <header className="mb-12 border-b border-outline/20 pb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-colors duration-500 w-full">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-surface-variant border-2 border-primary/30 overflow-hidden shrink-0 shadow-md">
+              <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`} alt="Avatar" className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <h1 className="text-4xl sm:text-5xl font-serif italic font-light tracking-tighter text-primary uppercase" dir="ltr">
+                CYBER ACADEMY
+              </h1>
+              <p className="text-[10px] uppercase tracking-widest mt-2 opacity-60 font-bold" dir="ltr">
+                SELECT TRAINING MODULE
+              </p>
+            </div>
           </div>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          
           {/* Courses */}
-          <button 
-            onClick={() => onSelectGame('courses')}
+          <button
+            onClick={() => onSelectGame("courses")}
             className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant rounded-2xl hover:shadow-[-12px_12px_0px_var(--sys-primary)] transition-all hover:-translate-y-1 flex flex-col items-start h-full`}
           >
-            <div className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4 focus:outline-none`}>
+            <div
+              className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4 focus:outline-none`}
+            >
               <BookOpen className="w-6 h-6" />
             </div>
-            <h2 className="text-2xl font-serif italic mb-4">الدورات التعليمية</h2>
+            <h2 className="text-2xl font-serif italic mb-4">
+              الدورات التعليمية
+            </h2>
             <p className="text-sm opacity-70 mb-auto leading-relaxed font-sans focus:outline-none">
-              شاهد المحاضرات، واقرأ المراجع المكتوبة (PDF)، وتابع مقاطع الفيديو التعليمية لتطوير مهاراتك بشكل احترافي.
+              شاهد المحاضرات، واقرأ المراجع المكتوبة (PDF)، وتابع مقاطع الفيديو
+              التعليمية لتطوير مهاراتك بشكل احترافي.
             </p>
             <div className="flex gap-4 mt-6">
-              <span className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold`}>دورات</span>
+              <span
+                className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold`}
+              >
+                دورات
+              </span>
             </div>
           </button>
 
           {/* Cyber Insights (Flashcards) */}
-          <button 
-            onClick={() => onSelectGame('flashcards')}
-            className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant rounded-2xl ${theme === 'dark' ? 'hover:shadow-[-12px_12px_0px_var(--sys-primary)]' : 'hover:shadow-[-12px_12px_0px_var(--sys-primary)]'} transition-all hover:-translate-y-1 flex flex-col items-start h-full`}
+          <button
+            onClick={() => onSelectGame("flashcards")}
+            className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant rounded-2xl ${theme === "dark" ? "hover:shadow-[-12px_12px_0px_var(--sys-primary)]" : "hover:shadow-[-12px_12px_0px_var(--sys-primary)]"} transition-all hover:-translate-y-1 flex flex-col items-start h-full`}
           >
-            <div className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4 focus:outline-none`}>
+            <div
+              className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4 focus:outline-none`}
+            >
               <FileText className="w-6 h-6" />
             </div>
             <h2 className="text-2xl font-serif italic mb-4">رؤى سيبرانية</h2>
             <p className="text-sm opacity-70 mb-auto leading-relaxed font-sans focus:outline-none">
-              راجع تعريفات الأمن السيبراني الهامة وتكتيكات المخترقين عبر بطاقات تفاعلية. قراءة أساسية.
+              راجع تعريفات الأمن السيبراني الهامة وتكتيكات المخترقين عبر بطاقات
+              تفاعلية. قراءة أساسية.
             </p>
             <div className="flex gap-4 mt-6">
-              <span className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold`}>المعرفة</span>
+              <span
+                className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold`}
+              >
+                المعرفة
+              </span>
             </div>
           </button>
 
           {/* Level Assessment & AI Plan */}
-          <button 
-            onClick={() => onSelectGame('assessment')}
+          <button
+            onClick={() => onSelectGame("assessment")}
             className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant rounded-2xl hover:shadow-[-12px_12px_0px_var(--sys-primary)] transition-all hover:-translate-y-1 flex flex-col items-start h-full`}
-            style={{
-              color: '#83aade',
-              borderStyle: 'groove',
-              borderWidth: '0px',
-              paddingLeft: '24px',
-              fontStyle: 'normal',
-              textDecorationLine: 'none',
-              fontWeight: 'normal',
-              fontFamily: 'Georgia',
-              fontSize: '24px',
-              lineHeight: '24px'
-            }}
           >
-            <div className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4`}>
+            <div
+              className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4`}
+            >
               <Target className="w-6 h-6" />
             </div>
-            <h2 className="text-2xl font-serif italic mb-4">تحديد المستوى وخطة AI</h2>
+            <h2 className="text-2xl font-serif italic mb-4">
+              تحديد المستوى وخطة AI
+            </h2>
             <p className="text-sm opacity-70 mb-auto leading-relaxed font-sans mt-0">
-              اختبار لتحديد مستواك الأمني بدقة. بعد التقييم، سيقوم الذكاء الاصطناعي ببناء خطة دراسية متكاملة مخصصة لك.
+              اختبار لتحديد مستواك الأمني بدقة. بعد التقييم، سيقوم الذكاء
+              الاصطناعي ببناء خطة دراسية متكاملة مخصصة لك.
             </p>
             <div className="flex gap-4 mt-6">
-              <span className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold`}>تقييم وإرشاد</span>
+              <span
+                className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold`}
+              >
+                تقييم وإرشاد
+              </span>
             </div>
           </button>
 
           {/* Crypto Puzzles */}
-          <button 
-            onClick={() => onSelectGame('crypto')}
+          <button
+            onClick={() => onSelectGame("crypto")}
             className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant rounded-2xl hover:shadow-[-12px_12px_0px_var(--sys-primary)] transition-all hover:-translate-y-1 flex flex-col items-start h-full`}
           >
-            <div className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4`}>
+            <div
+              className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4`}
+            >
               <Key className="w-6 h-6" />
             </div>
             <h2 className="text-2xl font-serif italic mb-4">تشفير وأوامر</h2>
             <p className="text-sm opacity-70 mb-auto leading-relaxed font-sans">
-              حل ألغاز تعتمد على الكلمات للتعرف على أشهر الأوامر وخوارزميات التشفير المستخدمة في بناء الأنظمة.
+              حل ألغاز تعتمد على الكلمات للتعرف على أشهر الأوامر وخوارزميات
+              التشفير المستخدمة في بناء الأنظمة.
             </p>
             <div className="flex gap-4 mt-6">
-              <span className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold border-r-2 border-primary`}>لغز الكلمات</span>
+              <span
+                className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold border-r-2 border-primary`}
+              >
+                لغز الكلمات
+              </span>
             </div>
           </button>
 
           {/* Cyber Millionaire Card */}
-          <button 
-            onClick={() => onSelectGame('millionaire')}
+          <button
+            onClick={() => onSelectGame("millionaire")}
             className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant rounded-2xl hover:shadow-[-12px_12px_0px_var(--sys-primary)] transition-all hover:-translate-y-1 flex flex-col items-start h-full`}
           >
-            <div className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4`}>
+            <div
+              className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4`}
+            >
               <Trophy className="w-6 h-6" />
             </div>
-            <h2 className="text-2xl font-serif italic mb-4">المليونير السيبراني</h2>
+            <h2 className="text-2xl font-serif italic mb-4">
+              المليونير السيبراني
+            </h2>
             <p className="text-sm opacity-70 mb-auto leading-relaxed font-sans">
-              يغطي الشبكات والتشفير والعمليات الدفاعية. استخدم مساعدة الذكاء الاصطناعي بحكمة لتخطي المراحل.
+              يغطي الشبكات والتشفير والعمليات الدفاعية. استخدم مساعدة الذكاء
+              الاصطناعي بحكمة لتخطي المراحل.
             </p>
             <div className="flex gap-4 mt-6">
-              <span className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold border-r-2 border-primary`}>مسابقات</span>
+              <span
+                className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold border-r-2 border-primary`}
+              >
+                مسابقات
+              </span>
             </div>
           </button>
-
-          {/* Admin Panel - Only for admin user */}
-          {studentName === 'المدير' && (
-          <button 
-            onClick={() => onSelectGame('admin')}
-            className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-error/30 rounded-2xl hover:shadow-[-12px_12px_0px_var(--sys-error)] transition-all hover:-translate-y-1 flex flex-col items-start h-full col-span-1 md:col-span-2 lg:col-span-3`}
-          >
-            <div className={`w-12 h-12 bg-error/10 text-error border border-error/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-error transition-colors mb-4`}>
-              <ShieldAlert className="w-6 h-6" />
-            </div>
-            <h2 className="text-2xl font-serif italic mb-4">لوحة الإدارة</h2>
-            <p className="text-sm opacity-70 mb-auto leading-relaxed font-sans">
-              إدارة المستخدمين، عرض السجلات، التحكم بالبيانات والصلاحيات.
-            </p>
-            <div className="flex gap-4 mt-6">
-              <span className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-error/10 text-error font-bold border-r-2 border-error`}>إدارة</span>
-            </div>
-          </button>
-          )}
 
           {/* SecureCity Map Card */}
-          <button 
-            onClick={() => onSelectGame('city')}
+          <button
+            onClick={() => onSelectGame("city")}
             className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant rounded-2xl hover:shadow-[-12px_12px_0px_var(--sys-primary)] transition-all hover:-translate-y-1 flex flex-col items-start h-full lg:col-span-2`}
           >
-            <div className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4`}>
+            <div
+              className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4`}
+            >
               <Activity className="w-6 h-6" />
             </div>
-            <h2 className="text-2xl font-serif italic mb-4">محاكاة مدينة آمنة</h2>
+            <h2 className="text-2xl font-serif italic mb-4">
+              محاكاة مدينة آمنة
+            </h2>
             <p className="text-sm opacity-70 mb-auto leading-relaxed font-sans max-w-2xl">
-              محاكاة تشغيلية. أدر الدفاع عن البنية التحتية لمدينة ذكية ضد التهديدات المباشرة. تواصل مباشرة مع نظام الذكاء الاصطناعي Locus لتنفيذ الاستراتيجيات و توجيه الهجمات السيبرانية و رصد النتائج.
+              محاكاة تشغيلية. أدر الدفاع عن البنية التحتية لمدينة ذكية ضد
+              التهديدات المباشرة. تواصل مباشرة مع نظام الذكاء الاصطناعي Locus
+              لتنفيذ الاستراتيجيات و توجيه الهجمات السيبرانية و رصد النتائج.
             </p>
             <div className="flex gap-4 mt-6">
-              <span className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold`}>محاكاة عملية</span>
+              <span
+                className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold`}
+              >
+                محاكاة عملية
+              </span>
             </div>
           </button>
-
         </div>
       </div>
     </div>
   );
-  };
+};

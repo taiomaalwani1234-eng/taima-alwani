@@ -1,6 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Sun, Moon, Bell as Notifications, Settings, LayoutDashboard as Dashboard, Globe as Public } from 'lucide-react';
-import { Toast, useToast } from './Toast';
+import React, { useState } from 'react';
+import { Sun, Moon, Bell as Notifications, Settings, LayoutDashboard as Dashboard, Globe as Public, User, Menu, X } from 'lucide-react';
 
 interface GlobalHeaderProps {
   onBack?: () => void;
@@ -8,31 +7,40 @@ interface GlobalHeaderProps {
   studentLevel?: string;
   budget?: number;
   showDashboardButton?: boolean;
-  theme?: 'light' | 'dark';
-  onThemeChange?: (theme: 'light' | 'dark') => void;
+  avatarSeed?: string;
+  onAvatarSelect?: (seed: string) => void;
+  onToggleSidebar?: () => void;
 }
 
-export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
-  onBack,
-  studentName,
-  studentLevel,
+export const AVATAR_SEEDS = [
+  'Aneka',
+  'Mia',
+  'Sofia',
+  'Lily',
+  'Lola',
+  'Kiki',
+  'Zoe',
+  'Felix',
+  'Jasper',
+  'Ryan',
+];
+
+export const GlobalHeader: React.FC<GlobalHeaderProps> = ({ 
+  onBack, 
+  studentName, 
+  studentLevel, 
   budget,
   showDashboardButton = true,
-  theme: themeProp,
-  onThemeChange,
+  avatarSeed = 'Aneka',
+  onAvatarSelect,
+  onToggleSidebar
 }) => {
-  const [internalTheme, setInternalTheme] = useState<'light' | 'dark'>(
-    document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-  );
-  const theme = themeProp ?? internalTheme;
+  const [theme, setTheme] = useState<'light' | 'dark'>(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettingsProfile, setShowSettingsProfile] = useState(false);
-  const { toast, show: showToast, hide: hideToast } = useToast();
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
-  const notificationsRef = useRef<HTMLDivElement>(null);
-  const settingsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
+  React.useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
@@ -40,29 +48,10 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
     }
   }, [theme]);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
-        setShowNotifications(false);
-      }
-      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
-        setShowSettingsProfile(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    if (!themeProp) setInternalTheme(next);
-    onThemeChange?.(next);
-  };
-
   const handleShare = (app: 'whatsapp' | 'messenger' | 'telegram' | 'native') => {
     const url = window.location.href;
     const text = 'العب معي في لعبة المدينة الآمنة للأمن السيبراني!';
-
+    
     if (app === 'whatsapp') {
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text + ' ' + url)}`);
     } else if (app === 'messenger') {
@@ -74,14 +63,13 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
         navigator.share({ title: 'لعبة المدينة الآمنة', text, url });
       } else {
         navigator.clipboard.writeText(url);
-        showToast('تم نسخ الرابط!', 'success');
+        alert('تم نسخ الرابط!');
       }
     }
   };
 
   return (
-    <header className="flex justify-between items-center px-4 sm:px-6 h-16 w-full fixed top-0 z-[60] bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-md shadow-primary/10 transition-colors duration-500 text-on-surface" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+    <header className="flex justify-between items-center px-6 h-16 w-full fixed top-0 z-[60] bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-md shadow-primary/10 transition-colors duration-500 text-on-surface">
       <div className="flex items-center gap-6">
         <span className="font-h2-header text-[24px] text-primary tracking-tighter uppercase font-bold text-outline-0">CYBER_CORE</span>
         {showDashboardButton && onBack && (
@@ -98,83 +86,131 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-4">
-        <button
-          onClick={toggleTheme}
+        {onToggleSidebar && (
+          <button 
+            onClick={onToggleSidebar}
+            className="lg:hidden transition-all duration-300 active:scale-95 p-2 rounded-full text-on-surface hover:bg-primary/20"
+            title="توجيه العمليات"
+          >
+            <Menu className="w-5 h-5 text-primary"/>
+          </button>
+        )}
+
+        <button 
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
           className="transition-all duration-300 active:scale-95 p-2 rounded-full text-on-surface hover:bg-primary/20"
           title="تبديل الإضاءة"
         >
           {theme === 'dark' ? <Sun className="w-5 h-5 text-primary"/> : <Moon className="w-5 h-5 text-primary"/>}
         </button>
 
-        <div className="relative" ref={notificationsRef}>
-          <button
+        <div className="relative">
+          <button 
             onClick={() => setShowNotifications(!showNotifications)}
             className="text-primary active:scale-95 hover:bg-primary/20 p-2 rounded-full transition-all relative"
           >
             <Notifications className="w-5 h-5"/>
             <span className="absolute top-1 right-2 w-2 h-2 bg-error rounded-full animate-bounce"></span>
           </button>
-          
-          {showNotifications && (
-            <div className="absolute top-full right-0 sm:left-0 mt-2 w-[calc(100vw-2rem)] sm:w-64 max-w-[280px] bg-surface border border-outline-variant/20 rounded-xl shadow-lg p-4 z-50">
-              <h4 className="font-bold text-sm mb-2 text-primary text-right">الإشعارات</h4>
-              <div className="space-y-2 text-right">
-                <div className="p-2 bg-surface-variant rounded text-xs text-on-surface">مرحباً بك في المحاكاة الأمنية!</div>
-                <div className="p-2 bg-error/10 text-error rounded text-xs">تأكد من مراجعة حالة الشبكة باستمرار.</div>
-                <div className="p-2 bg-surface-variant rounded text-xs text-on-surface">تحديث جديد: تمت إضافة مستويات جديدة للمحاكاة الأمنية! استعد للتحدي.</div>
-                <div className="p-2 bg-primary/10 text-primary rounded text-xs">إعلان: شارك نتيجتك مع أصدقائك وتنافسوا على لقب أفضل محلل أمني.</div>
-              </div>
-            </div>
-          )}
         </div>
 
-        <div className="relative" ref={settingsRef}>
-          <button
-            onClick={() => setShowSettingsProfile(!showSettingsProfile)}
+        <div className="relative">
+          <button 
+            onClick={() => {
+              setShowSettingsProfile(!showSettingsProfile);
+              setShowAvatarPicker(false);
+            }} 
             title="الإعدادات الشخصية" 
             className="text-primary active:scale-95 hover:bg-primary/20 p-2 rounded-full transition-all"
           >
             <Settings className="w-5 h-5"/>
           </button>
-          
-          {showSettingsProfile && (
-            <div className="absolute top-full right-0 sm:left-0 mt-2 w-[calc(100vw-2rem)] sm:w-72 max-w-[300px] bg-surface border border-outline-variant/20 rounded-xl shadow-lg p-4 z-50 text-right">
-              <h4 className="font-bold text-sm mb-4 text-primary">الملف الشخصي والتدريب</h4>
-              <div className="space-y-4">
-                {budget !== undefined && (
-                  <div className="flex justify-between items-center bg-surface-variant p-2 rounded text-sm">
-                    <span className="font-bold text-primary">${budget.toLocaleString()}</span>
-                    <span>الرصيد المتاح:</span>
-                  </div>
-                )}
-                
-                <div className="flex justify-between items-center bg-surface-variant p-2 rounded text-sm">
-                  <span className="font-bold">{studentLevel || 'غير محدد'}</span>
-                  <span>مستوى التقييم:</span>
+        </div>
+
+        {showNotifications && (
+          <div className="absolute top-full right-0 mt-2 w-64 md:w-72 bg-surface border border-outline-variant/20 rounded-xl shadow-lg p-4 z-50 animate-in fade-in slide-in-from-top-2">
+            <div className="flex justify-between items-center mb-2 border-b border-outline-variant/20 pb-2">
+              <button onClick={() => setShowNotifications(false)} className="text-primary/50 hover:text-primary"><X className="w-4 h-4"/></button>
+              <h4 className="font-bold text-sm text-primary text-right">الإشعارات</h4>
+            </div>
+            <div className="space-y-2 text-right">
+              <div className="p-2 bg-surface-variant rounded text-xs text-on-surface">مرحباً بك في المحاكاة الأمنية!</div>
+              <div className="p-2 bg-error/10 text-error rounded text-xs">تأكد من مراجعة حالة الشبكة باستمرار.</div>
+              <div className="p-2 bg-surface-variant rounded text-xs text-on-surface">تحديث جديد: تمت إضافة مستويات جديدة للمحاكاة الأمنية! استعد للتحدي.</div>
+              <div className="p-2 bg-primary/10 text-primary rounded text-xs">إعلان: شارك نتيجتك مع أصدقائك وتنافسوا على لقب أفضل محلل أمني.</div>
+            </div>
+          </div>
+        )}
+
+        {showSettingsProfile && (
+          <div className="absolute top-full right-0 mt-2 w-72 md:w-80 bg-surface border border-outline-variant/20 rounded-xl shadow-lg p-4 z-50 text-right max-h-[80vh] overflow-y-auto animate-in fade-in slide-in-from-top-2">
+            <div className="flex justify-between items-center mb-4 border-b border-outline-variant/20 pb-3">
+              <button onClick={() => setShowSettingsProfile(false)} className="text-primary/50 hover:text-primary"><X className="w-4 h-4"/></button>
+              <h4 className="font-bold text-sm text-primary">الملف الشخصي والتدريب</h4>
+            </div>
+            
+            <div className="flex flex-col items-center mb-6">
+              <div 
+                className="w-24 h-24 rounded-full bg-surface-variant border-4 border-primary/20 overflow-hidden cursor-pointer hover:border-primary/50 transition-all hover:scale-105"
+                onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+                title="تغيير الشخصية"
+              >
+                <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=transparent`} alt="Avatar" className="w-full h-full object-cover" />
+              </div>
+              <p className="text-xs text-on-surface-variant mt-2">انقر لتغيير الشخصية</p>
+            </div>
+
+            {showAvatarPicker && onAvatarSelect && (
+              <div className="mb-6 p-3 bg-surface-variant/50 rounded-xl border border-outline-variant/30">
+                <h5 className="font-bold text-xs text-primary mb-3 text-center">اختر شخصيتك</h5>
+                <div className="grid grid-cols-3 gap-2">
+                  {AVATAR_SEEDS.map((seed) => (
+                    <button
+                      key={seed}
+                      onClick={() => onAvatarSelect(seed)}
+                      className={`aspect-square rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${avatarSeed === seed ? 'border-primary ring-2 ring-primary/30' : 'border-transparent hover:border-primary/50'}`}
+                    >
+                      <img src={`https://api.dicebear.com/7.x/micah/svg?seed=${seed}&backgroundColor=b9d8e1`} alt={seed} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
                 </div>
-                
-                {/* Share Options */}
-                <div className="p-3 bg-surface-container rounded-lg border border-outline-variant/30">
-                  <h5 className="font-bold text-xs text-primary mb-3">شارك اللعبة مع أصدقائك</h5>
-                  <div className="space-y-2">
-                    <button onClick={() => handleShare('whatsapp')} className="w-full flex justify-end items-center gap-2 px-3 py-2 bg-[#25D366]/10 text-[#25D366] rounded hover:bg-[#25D366]/20 transition-all font-bold text-xs">
-                      عبر واتساب
-                    </button>
-                    <button onClick={() => handleShare('messenger')} className="w-full flex justify-end items-center gap-2 px-3 py-2 bg-[#0084FF]/10 text-[#0084FF] rounded hover:bg-[#0084FF]/20 transition-all font-bold text-xs">
-                      عبر ماسنجر
-                    </button>
-                    <button onClick={() => handleShare('telegram')} className="w-full flex justify-end items-center gap-2 px-3 py-2 bg-[#0088cc]/10 text-[#0088cc] rounded hover:bg-[#0088cc]/20 transition-all font-bold text-xs">
-                      عبر تيليجرام
-                    </button>
-                    <button onClick={() => handleShare('native')} className="w-full flex justify-end items-center gap-2 px-3 py-2 bg-secondary/10 text-secondary border border-secondary/30 rounded text-xs font-bold hover:bg-secondary/20 transition-all">
-                      نسخ الرابط <Public className="w-4 h-4"/>
-                    </button>
-                  </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {budget !== undefined && (
+                <div className="flex justify-between items-center bg-surface-variant p-2 rounded text-sm">
+                  <span className="font-bold text-primary">${budget.toLocaleString()}</span>
+                  <span>الرصيد المتاح:</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between items-center bg-surface-variant p-2 rounded text-sm">
+                <span className="font-bold">{studentLevel || 'غير محدد'}</span>
+                <span>مستوى التقييم:</span>
+              </div>
+              
+              {/* Share Options */}
+              <div className="p-3 bg-surface-container rounded-lg border border-outline-variant/30">
+                <h5 className="font-bold text-xs text-primary mb-3">شارك اللعبة مع أصدقائك</h5>
+                <div className="space-y-2">
+                  <button onClick={() => handleShare('whatsapp')} className="w-full flex justify-end items-center gap-2 px-3 py-2 bg-[#25D366]/10 text-[#25D366] rounded hover:bg-[#25D366]/20 transition-all font-bold text-xs">
+                    عبر واتساب
+                  </button>
+                  <button onClick={() => handleShare('messenger')} className="w-full flex justify-end items-center gap-2 px-3 py-2 bg-[#0084FF]/10 text-[#0084FF] rounded hover:bg-[#0084FF]/20 transition-all font-bold text-xs">
+                    عبر ماسنجر
+                  </button>
+                  <button onClick={() => handleShare('telegram')} className="w-full flex justify-end items-center gap-2 px-3 py-2 bg-[#0088cc]/10 text-[#0088cc] rounded hover:bg-[#0088cc]/20 transition-all font-bold text-xs">
+                    عبر تيليجرام
+                  </button>
+                  <button onClick={() => handleShare('native')} className="w-full flex justify-end items-center gap-2 px-3 py-2 bg-secondary/10 text-secondary border border-secondary/30 rounded text-xs font-bold hover:bg-secondary/20 transition-all">
+                    نسخ الرابط <Public className="w-4 h-4"/>
+                  </button>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </header>
   );
