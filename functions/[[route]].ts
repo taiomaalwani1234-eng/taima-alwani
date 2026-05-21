@@ -21,11 +21,17 @@ const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE,
+  password_hash TEXT,
   nickname TEXT,
   level TEXT DEFAULT 'recruit',
   created_at TEXT DEFAULT (datetime('now')),
   last_login TEXT DEFAULT (datetime('now'))
 );
+
+-- Migrate: add email/password columns if missing
+ALTER TABLE users ADD COLUMN email TEXT;
+ALTER TABLE users ADD COLUMN password_hash TEXT;
 
 CREATE TABLE IF NOT EXISTS progress (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,37 +97,82 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         return jsonResponse({ status: 'ok', time: new Date().toISOString() });
       }
 
-      // ===== REGISTER / LOGIN =====
-      if (path === '/api/auth/login' && method === 'POST') {
-        const { username, nickname } = await request.json() as any;
-        if (!username) return jsonResponse({ error: 'username required' }, 400);
+      // ===== REGISTER =====
+      if (path === '/api/auth/register' && method === 'POST') {
+        const { username, email, password, nickname } = await request.json() as any;
+        if (!username || !email || !password) return jsonResponse({ error: 'username, email, and password required' }, 400);
+        if (password.length < 4) return jsonResponse({ error: 'password too short (min 4)' }, 400);
 
-        // Upsert user
+        // Check if email or username exists
+        const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ?').bind(email, username).first();
+        if (existing) return jsonResponse({ error: 'email or username already exists' }, 409);
+
+        const result = await env.DB.prepare('INSERT INTO users (username, email, password_hash, nickname) VALUES (?, ?, ?, ?)')
+          .bind(username, email, password, nickname || username).run();
+        const newId = result.meta.last_row_id;
+
+        await env.DB.prepare('INSERT INTO logs (user_id, action, ip) VALUES (?, "register", ?)')
+          .bind(newId, request.headers.get('cf-connecting-ip') || '').run();
+
+        const user = await env.DB.prepare('SELECT id, username, email, nickname, level, created_at FROM users WHERE id = ?').bind(newId).first();
+        return jsonResponse({ user, isNew: true }, 201);
+      }
+
+      // ===== LOGIN (email + password) =====
+      if (path === '/api/auth/login' && method === 'POST') {
+        const body = await request.json() as any;
+        const { username, nickname, email, password } = body;
+
+        // Email + password login
+        if (email && password) {
+          const user = await env.DB.prepare('SELECT * FROM users WHERE email = ? AND password_hash = ?').bind(email, password).first();
+          if (!user) return jsonResponse({ error: 'invalid email or password' }, 401);
+
+          await env.DB.prepare('UPDATE users SET last_login = datetime("now") WHERE id = ?').bind(user.id).run();
+          await env.DB.prepare('INSERT INTO logs (user_id, action, ip) VALUES (?, "login", ?)')
+            .bind(user.id, request.headers.get('cf-connecting-ip') || '').run();
+
+          const safeUser = await env.DB.prepare('SELECT id, username, email, nickname, level, created_at FROM users WHERE id = ?').bind(user.id).first();
+          return jsonResponse({ user: safeUser, isNew: false });
+        }
+
+        // Legacy: username-only login
+        if (!username) return jsonResponse({ error: 'email+password or username required' }, 400);
         const existing = await env.DB.prepare('SELECT * FROM users WHERE username = ?').bind(username).first();
         
         if (existing) {
-          // Update last login & nickname
           await env.DB.prepare('UPDATE users SET last_login = datetime("now"), nickname = ? WHERE id = ?')
             .bind(nickname || existing.nickname, existing.id).run();
-          
-          // Log
           await env.DB.prepare('INSERT INTO logs (user_id, action, ip) VALUES (?, "login", ?)')
             .bind(existing.id, request.headers.get('cf-connecting-ip') || '').run();
-
-          const user = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(existing.id).first();
+          const user = await env.DB.prepare('SELECT id, username, email, nickname, level, created_at FROM users WHERE id = ?').bind(existing.id).first();
           return jsonResponse({ user, isNew: false });
         } else {
-          // Create new user
-          const result = await env.DB.prepare('INSERT INTO users (username, nickname) VALUES (?, ?)')
-            .bind(username, nickname || username).run();
-          
+          const result = await env.DB.prepare('INSERT INTO users (username, nickname) VALUES (?, ?)').bind(username, nickname || username).run();
           const newId = result.meta.last_row_id;
           await env.DB.prepare('INSERT INTO logs (user_id, action, ip) VALUES (?, "register", ?)')
             .bind(newId, request.headers.get('cf-connecting-ip') || '').run();
-
-          const user = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(newId).first();
+          const user = await env.DB.prepare('SELECT id, username, email, nickname, level, created_at FROM users WHERE id = ?').bind(newId).first();
           return jsonResponse({ user, isNew: true }, 201);
         }
+      }
+
+      // ===== UPDATE PROFILE =====
+      if (path === '/api/user/profile' && method === 'POST') {
+        const { user_id, nickname, email, password } = await request.json() as any;
+        if (!user_id) return jsonResponse({ error: 'user_id required' }, 400);
+
+        const updates: string[] = [];
+        const params: any[] = [];
+        if (nickname !== undefined) { updates.push('nickname = ?'); params.push(nickname); }
+        if (email !== undefined) { updates.push('email = ?'); params.push(email); }
+        if (password !== undefined) { updates.push('password_hash = ?'); params.push(password); }
+        if (updates.length === 0) return jsonResponse({ error: 'nothing to update' }, 400);
+
+        params.push(user_id);
+        await env.DB.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+        const user = await env.DB.prepare('SELECT id, username, email, nickname, level, created_at FROM users WHERE id = ?').bind(user_id).first();
+        return jsonResponse({ user });
       }
 
       // ===== SAVE PROGRESS =====

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { GlobalHeader } from "./GlobalHeader";
 import { cyberTips, Tip } from "../data/tips";
+import generatedTipsRaw from "../data/tips_generated.json";
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,7 +10,6 @@ import {
   Activity,
   RefreshCw,
 } from "lucide-react";
-import { generateJSON } from "../services/aiClient";
 
 import { TutorialOverlay } from "./TutorialOverlay";
 
@@ -18,10 +18,14 @@ interface FlashcardsViewProps {
   isTutorial?: boolean;
 }
 
+const ALL_TIPS: Tip[] = [...cyberTips, ...(generatedTipsRaw as Tip[])];
+const TIPS_PER_SESSION = 10;
+const CACHE_KEY = "cyber_session_tips_v2";
 
-
-const CACHE_KEY = "cyber_daily_tips_v1";
-const CACHE_DATE_KEY = "cyber_daily_tips_date_v1";
+function getRandomTips(count: number): Tip[] {
+  const shuffled = [...ALL_TIPS].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
 
 export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
   onBack,
@@ -32,64 +36,49 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Function to load the daily tips from AI
-  const loadDailyTips = async (forceRefresh = false) => {
-    setIsLoading(!forceRefresh);
-    if (forceRefresh) setIsRefreshing(true);
-
-    try {
-      const today = new Date().toISOString().split("T")[0];
-
-      if (!forceRefresh) {
-        const cachedDate = localStorage.getItem(CACHE_DATE_KEY);
-        if (cachedDate === today) {
-          const cachedTips = localStorage.getItem(CACHE_KEY);
-          if (cachedTips) {
-            setTips(JSON.parse(cachedTips));
-            setIsLoading(false);
-            return;
-          }
+  const loadSession = () => {
+    setIsLoading(true);
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed.tips && parsed.tips.length === TIPS_PER_SESSION) {
+          setTips(parsed.tips);
+          setCurrentIndex(parsed.index || 0);
+          setIsLoading(false);
+          return;
         }
-      }
-
-      // Generate prompt for AI
-      const prompt = `أنت مهندس وخبير أمن سيبراني محترف. 
-قم بتوليد ما بين 10 إلى 20 نصيحة أمنية ومعلومات سيبرانية وتكتيكات متقدمة (مثل تقنيات الاختراق، الدفاع الاستباقي، التشفير المتقدم، والتهديدات الحديثة).
-يجب أن تكون هذه المعلومات جديدة ومتنوعة، مكتوبة بلغة عربية فصحى احترافية ومفهومة للطلاب.
-يجب إرجاع الرد بصيغة JSON Array حصراً.
-كل كائن Object في المصفوفة يحتوي على:
-- id: رقم عشوائي فريد
-- title: عنوان النصيحة (أقل من 5 كلمات)
-- category: مجال النصيحة (مثل: هندسة الشبكات، أمن الويب، أمن تطبيقات الهاتف، الجدار الناري البشري، الذكاء الاصطناعي الأمني، التشفير)
-- content: محتوى النصيحة المفصّل (واضح، علمي دقيق، وبناء).`;
-
-      const response = await generateJSON(prompt);
-      const generatedTips = JSON.parse(response) as Tip[];
-
-      if (generatedTips.length > 0) {
-        setTips(generatedTips);
-        setCurrentIndex(0);
-        setIsFlipped(false);
-        localStorage.setItem(CACHE_KEY, JSON.stringify(generatedTips));
-        localStorage.setItem(CACHE_DATE_KEY, today);
-      } else {
-        setTips(cyberTips); // Fallback
-      }
-    } catch (error) {
-      console.error("Failed to generate tips:", error);
-      // Fallback to static tips on failure
-      setTips(cyberTips);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      } catch {}
     }
+    // Load new random batch
+    const batch = getRandomTips(TIPS_PER_SESSION);
+    setTips(batch);
+    setCurrentIndex(0);
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ tips: batch, index: 0 }));
+    setIsLoading(false);
+  };
+
+  const refreshTips = () => {
+    setIsLoading(true);
+    const batch = getRandomTips(TIPS_PER_SESSION);
+    setTips(batch);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ tips: batch, index: 0 }));
+    setIsLoading(false);
   };
 
   useEffect(() => {
-    loadDailyTips();
+    loadSession();
   }, []);
+
+  // Save current index
+  useEffect(() => {
+    if (tips.length > 0) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ tips, index: currentIndex }));
+    }
+  }, [currentIndex]);
 
   const currentTip = tips[currentIndex] || cyberTips[0];
 
@@ -137,24 +126,21 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
             الرؤى السيبرانية
           </h1>
           <p className="text-[10px] uppercase tracking-[0.2em] mt-2 opacity-60 font-semibold">
-            رؤى ونصائح متجددة يومياً بالطاقة الاصطناعية
+            رؤى ونصائح متجددة — {tips.length} رؤية في هذه الجلسة
           </p>
         </div>
 
         {!isLoading && (
           <button
-            onClick={() => loadDailyTips(true)}
-            disabled={isRefreshing}
-            className="flex flex-col items-center gap-1 group disabled:opacity-50"
-            title="توليد معرفة جديدة"
+            onClick={refreshTips}
+            className="flex flex-col items-center gap-1 group"
+            title="تبديل برؤى جديدة"
           >
             <div className="bg-on-background text-white p-2 sm:p-3 group-hover:bg-primary transition-colors rounded-full shadow-[4px_4px_0px_rgba(26,26,26,0.3)]">
-              <RefreshCw
-                className={`w-4 h-4 sm:w-5 sm:h-5 ${isRefreshing ? "animate-spin" : ""}`}
-              />
+              <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <span className="text-[8px] sm:text-[9px] uppercase tracking-widest font-bold opacity-60 hidden sm:block">
-              تحديث الآن
+              تبديل الرؤى
             </span>
           </button>
         )}
@@ -166,7 +152,7 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
           <div className="flex flex-col items-center justify-center gap-6 h-full opacity-60">
             <Activity className="w-16 h-16 animate-spin-slow text-primary" />
             <p className="text-[11px] font-bold tracking-widest uppercase animate-pulse">
-              جاري استخراج وتحليل بيانات استخبارات التهديدات اليومية...
+              جاري تحميل الرؤى السيبرانية...
             </p>
           </div>
         ) : (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { AuthView } from './components/AuthView';
 import { DashboardView } from './components/DashboardView';
 import { MillionaireView } from './components/MillionaireView';
@@ -8,7 +8,7 @@ import { AssessmentView } from './components/AssessmentView';
 import { CryptoPuzzleView } from './components/CryptoPuzzleView';
 import { CoursesView } from './components/CoursesView';
 import { AdminView } from './components/AdminView';
-import { saveProgress, updateLevel } from './services/backendApi';
+import { saveProgress, updateLevel, getCurrentUser, saveUserLocally } from './services/backendApi';
 
 type ViewState = 'auth' | 'dashboard' | 'city' | 'millionaire' | 'flashcards' | 'assessment' | 'crypto' | 'courses' | 'admin';
 
@@ -19,6 +19,17 @@ export default function App() {
   const [userId, setUserId] = useState<number>(0);
   const [tutorialMode, setTutorialMode] = useState<boolean>(false);
   const [avatarSeed, setAvatarSeed] = useState<string>('Aneka');
+
+  // Restore session on mount
+  React.useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      setStudentName(user.nickname || user.username);
+      setStudentLevel(user.level || 'متدرب');
+      setUserId(user.id);
+      setCurrentView('dashboard');
+    }
+  }, []);
 
   const handleLogin = (name: string, level: string, id: number) => {
     setStudentName(name);

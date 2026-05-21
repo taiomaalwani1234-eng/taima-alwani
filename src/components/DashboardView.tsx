@@ -20,6 +20,7 @@ import {
   Shield,
   LogOut,
 } from "lucide-react";
+import { updateProfile, getCurrentUser, saveUserLocally } from "../services/backendApi";
 
 interface DashboardViewProps {
   studentName: string;
@@ -69,6 +70,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettingsProfile, setShowSettingsProfile] = useState(false);
   const [showAccountForm, setShowAccountForm] = useState<"name" | "password" | "email" | null>(null);
+  const [accountValue, setAccountValue] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
@@ -274,33 +277,57 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <input 
                     type={showAccountForm === "password" ? "password" : "text"}
                     placeholder={showAccountForm === "name" ? "الاسم الجديد" : showAccountForm === "email" ? "البريد الجديد" : "كلمة المرور الجديدة"}
+                    value={accountValue}
+                    onChange={(e) => setAccountValue(e.target.value)}
                     className="w-full bg-surface border border-outline-variant/50 rounded-lg p-2.5 text-sm mb-3 focus:outline-none focus:border-primary transition-all"
+                    dir={showAccountForm === "email" || showAccountForm === "password" ? "ltr" : "rtl"}
                   />
                   <button 
-                    onClick={() => setShowAccountForm(null)}
-                    className="w-full py-2.5 bg-primary text-white text-xs font-bold rounded-lg hover:brightness-110 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                    onClick={async () => {
+                      const user = getCurrentUser();
+                      if (!user || !accountValue.trim()) return;
+                      setIsSaving(true);
+                      try {
+                        const updates: any = {};
+                        if (showAccountForm === "name") updates.nickname = accountValue.trim();
+                        if (showAccountForm === "email") updates.email = accountValue.trim();
+                        if (showAccountForm === "password") updates.password = accountValue.trim();
+                        const res = await updateProfile(user.id, updates);
+                        if (res.user) {
+                          saveUserLocally(res.user);
+                          setShowAccountForm(null);
+                          setAccountValue('');
+                        }
+                      } catch (err) {
+                        console.error(err);
+                      } finally {
+                        setIsSaving(false);
+                      }
+                    }}
+                    disabled={isSaving}
+                    className="w-full py-2.5 bg-primary text-white text-xs font-bold rounded-lg hover:brightness-110 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50"
                   >
-                    تحديث البيانات
+                    {isSaving ? 'جاري الحفظ...' : 'تحديث البيانات'}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-2">
                   <button 
-                    onClick={() => setShowAccountForm("name")}
+                    onClick={() => { setShowAccountForm("name"); setAccountValue(''); }}
                     className="w-full flex justify-between items-center bg-surface-variant/30 hover:bg-surface-variant/70 p-3 rounded-xl text-sm border border-outline-variant/30 transition-all hover:translate-x-1"
                   >
                     <User className="w-4 h-4 text-primary" />
                     <span className="text-on-surface font-medium">تعديل الاسم المستعار</span>
                   </button>
                   <button 
-                    onClick={() => setShowAccountForm("email")}
+                    onClick={() => { setShowAccountForm("email"); setAccountValue(''); }}
                     className="w-full flex justify-between items-center bg-surface-variant/30 hover:bg-surface-variant/70 p-3 rounded-xl text-sm border border-outline-variant/30 transition-all hover:translate-x-1"
                   >
                     <Mail className="w-4 h-4 text-primary" />
                     <span className="text-on-surface font-medium">البريد الإلكتروني</span>
                   </button>
                   <button 
-                    onClick={() => setShowAccountForm("password")}
+                    onClick={() => { setShowAccountForm("password"); setAccountValue(''); }}
                     className="w-full flex justify-between items-center bg-surface-variant/30 hover:bg-surface-variant/70 p-3 rounded-xl text-sm border border-outline-variant/30 transition-all hover:translate-x-1"
                   >
                     <Lock className="w-4 h-4 text-primary" />
