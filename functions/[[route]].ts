@@ -16,37 +16,35 @@ function jsonResponse(data: any, status = 200) {
   });
 }
 
-// SQL Schema initialization
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT UNIQUE NOT NULL,
-  nickname TEXT,
-  level TEXT DEFAULT 'recruit',
-  created_at TEXT DEFAULT (datetime('now')),
-  last_login TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS progress (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  game_type TEXT NOT NULL,
-  data TEXT NOT NULL DEFAULT '{}',
-  updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (user_id) REFERENCES users(id),
-  UNIQUE(user_id, game_type)
-);
-
-CREATE TABLE IF NOT EXISTS logs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER,
-  action TEXT NOT NULL,
-  details TEXT DEFAULT '{}',
-  ip TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (user_id) REFERENCES users(id)
-);
-`;
+// SQL Schema initialization — each statement is separate for D1 batch()
+const SCHEMA_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    nickname TEXT,
+    level TEXT DEFAULT 'recruit',
+    created_at TEXT DEFAULT (datetime('now')),
+    last_login TEXT DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS progress (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    game_type TEXT NOT NULL,
+    data TEXT NOT NULL DEFAULT '{}',
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(user_id, game_type)
+  )`,
+  `CREATE TABLE IF NOT EXISTS logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    action TEXT NOT NULL,
+    details TEXT DEFAULT '{}',
+    ip TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )`,
+];
 
 // PBKDF2 Password Hashing using Web Crypto API
 async function hashPassword(password: string, salt?: string): Promise<{hash: string, salt: string}> {
@@ -75,22 +73,28 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
 }
 
 async function initDB(db: D1Database) {
-  // 1. Create tables
-  await db.exec(SCHEMA);
-  
-  // 2. Safe migration: check columns in 'users' table
+  // 1. Create tables using batch() — D1 requires each statement to be separate
+  await db.batch(SCHEMA_STATEMENTS.map(sql => db.prepare(sql)));
+
+  // 2. Safe column migration using PRAGMA table_info
+  // NOTE: D1/SQLite does NOT support ADD COLUMN ... UNIQUE via ALTER TABLE.
+  // We add the column without UNIQUE, and enforce uniqueness at the app layer.
   try {
     const tableInfo = await db.prepare("PRAGMA table_info(users)").all();
-    const columns = tableInfo.results.map((r: any) => r.name);
-    
+    const columns = (tableInfo.results as any[]).map((r: any) => r.name as string);
+
+    const migrations: ReturnType<D1Database['prepare']>[] = [];
     if (!columns.includes('email')) {
-      await db.exec("ALTER TABLE users ADD COLUMN email TEXT UNIQUE");
+      migrations.push(db.prepare("ALTER TABLE users ADD COLUMN email TEXT"));
     }
     if (!columns.includes('password_hash')) {
-      await db.exec("ALTER TABLE users ADD COLUMN password_hash TEXT");
+      migrations.push(db.prepare("ALTER TABLE users ADD COLUMN password_hash TEXT"));
+    }
+    if (migrations.length > 0) {
+      await db.batch(migrations);
     }
   } catch (err) {
-    console.error("Migration error:", err);
+    console.error("DB migration error:", err);
   }
 }
 
@@ -146,6 +150,17 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       // ===== HEALTH =====
       if (path === '/api/health' && method === 'GET') {
         return jsonResponse({ status: 'ok', time: new Date().toISOString() });
+      }
+
+      // ===== MANUAL MIGRATION TRIGGER (safe to call multiple times) =====
+      if (path === '/api/migrate' && method === 'GET') {
+        try {
+          await initDB(env.DB);
+          const tableInfo = await env.DB.prepare("PRAGMA table_info(users)").all();
+          return jsonResponse({ success: true, columns: tableInfo.results });
+        } catch (migErr: any) {
+          return jsonResponse({ success: false, error: migErr.message }, 500);
+        }
       }
 
       // ===== REGISTER =====
