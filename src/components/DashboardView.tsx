@@ -17,6 +17,8 @@ import {
   Mail,
   HelpCircle,
   X,
+  Shield,
+  LogOut,
 } from "lucide-react";
 
 interface DashboardViewProps {
@@ -31,9 +33,12 @@ interface DashboardViewProps {
       | "flashcards"
       | "assessment"
       | "crypto"
-      | "courses",
+      | "courses"
+      | "admin",
     tutorial?: boolean,
   ) => void;
+  userId?: number;
+  onLogout?: () => void;
 }
 
 export const AVATAR_SEEDS = [
@@ -55,6 +60,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   avatarSeed = "Aneka",
   onAvatarSelect,
   onSelectGame,
+  userId,
+  onLogout,
 }) => {
   const [theme, setTheme] = useState<"light" | "dark">(
     document.documentElement.classList.contains("dark") ? "dark" : "light",
@@ -299,6 +306,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <Lock className="w-4 h-4 text-primary" />
                     <span className="text-on-surface font-medium">تغيير كلمة المرور</span>
                   </button>
+                  <button 
+                    onClick={() => onSelectGame("admin" as any)}
+                    className="w-full flex justify-between items-center bg-primary/10 hover:bg-primary/20 p-3 rounded-xl text-sm border border-primary/30 transition-all hover:translate-x-1"
+                  >
+                    <Shield className="w-4 h-4 text-primary" />
+                    <span className="text-primary font-bold">لوحة الإدارة</span>
+                  </button>
+                  {onLogout && (
+                    <button 
+                      onClick={onLogout}
+                      className="w-full flex justify-between items-center bg-error/10 hover:bg-error/20 p-3 rounded-xl text-sm border border-error/30 transition-all hover:translate-x-1"
+                    >
+                      <LogOut className="w-4 h-4 text-error" />
+                      <span className="text-error font-bold">تسجيل الخروج</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>

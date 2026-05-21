@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { GlobalHeader } from './GlobalHeader';
 import { ArrowLeft, Users, FileText, BarChart3, Trash2, Edit3, Save, X, RefreshCw } from 'lucide-react';
 
-const API_BASE = "https://taima-alwani-api.hmsathayrt1.workers.dev/api";
+const API_BASE = "/api";
 
 interface User {
   id: number;
