@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Georgia:ital,wght@0,400;0,700;1,400;1,700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
@@ -25,62 +24,62 @@
   --color-surface-container: var(--sys-surface-container);
   --color-surface-container-high: var(--sys-surface-container-high);
 
-  --font-h1-display: 'Space Grotesk', sans-serif;
-  --font-h2-header: 'Space Grotesk', sans-serif;
-  --font-h3-terminal: 'Space Grotesk', sans-serif;
-  --font-label-caps: 'Space Grotesk', sans-serif;
-  --font-body-sm: 'Manrope', sans-serif;
-  --font-body-main: 'Manrope', sans-serif;
+  --font-h1-display: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'San Francisco', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-h2-header: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'San Francisco', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-h3-terminal: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'San Francisco', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-label-caps: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'San Francisco', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-body-sm: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'San Francisco', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-body-main: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'San Francisco', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
-  --font-sans: 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'San Francisco', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-serif: 'Georgia', serif;
 }
 
 @layer base {
   :root {
-    --sys-primary: #3BB2F6;
-    --sys-on-primary: #FFFFFF;
-    --sys-primary-container: #BAE6FD;
-    --sys-on-primary-container: #0369A1;
-    --sys-secondary: #06B6D4;
-    --sys-on-secondary: #FFFFFF;
+    --sys-primary: #447F98;
+    --sys-on-primary: #ffffff;
+    --sys-primary-container: #629BB5;
+    --sys-on-primary-container: #ffffff;
+    --sys-secondary: #B9D8E1;
+    --sys-on-secondary: #447F98;
     --sys-error: #ba1a1a;
     --sys-on-error: #ffffff;
-    --sys-background: #F5F7FF;
-    --sys-on-background: #1e293b;
-    --sys-surface: #FFFFFF;
-    --sys-on-surface: #1e293b;
-    --sys-surface-variant: #E4E9F7;
-    --sys-on-surface-variant: #6B7A99;
-    --sys-outline: #6B7A99;
-    --sys-outline-variant: #E4E9F7;
-    --sys-surface-container-lowest: #FFFFFF;
-    --sys-surface-container-low: #F5F7FF;
-    --sys-surface-container: #E4E9F7;
-    --sys-surface-container-high: #D8E0F2;
+    --sys-background: #D6EBF3;
+    --sys-on-background: #447F98;
+    --sys-surface: #DADEE1;
+    --sys-on-surface: #447F98;
+    --sys-surface-variant: #B9D8E1;
+    --sys-on-surface-variant: #447F98;
+    --sys-outline: #629BB5;
+    --sys-outline-variant: #B9D8E1;
+    --sys-surface-container-lowest: #ffffff;
+    --sys-surface-container-low: #D6EBF3;
+    --sys-surface-container: #DADEE1;
+    --sys-surface-container-high: #B9D8E1;
   }
 
   .dark {
-    --sys-primary: #3BB2F6;
-    --sys-on-primary: #0F172A;
-    --sys-primary-container: #0284C7;
-    --sys-on-primary-container: #F0F9FF;
-    --sys-secondary: #06B6D4;
-    --sys-on-secondary: #0F172A;
+    --sys-primary: #D6EBF3;
+    --sys-on-primary: #447F98;
+    --sys-primary-container: #B9D8E1;
+    --sys-on-primary-container: #447F98;
+    --sys-secondary: #DADEE1;
+    --sys-on-secondary: #447F98;
     --sys-error: #ffb4ab;
     --sys-on-error: #690005;
-    --sys-background: #0f172a;
-    --sys-on-background: #E5E7EB;
-    --sys-surface: #1e293b;
-    --sys-on-surface: #E5E7EB;
-    --sys-surface-variant: #334155;
-    --sys-on-surface-variant: #94A3B8;
-    --sys-outline: #475569;
-    --sys-outline-variant: #1e293b;
-    --sys-surface-container-lowest: #020617;
-    --sys-surface-container-low: #0f172a;
-    --sys-surface-container: #1e293b;
-    --sys-surface-container-high: #334155;
+    --sys-background: #376378;
+    --sys-on-background: #D6EBF3;
+    --sys-surface: #447F98;
+    --sys-on-surface: #D6EBF3;
+    --sys-surface-variant: #629BB5;
+    --sys-on-surface-variant: #D6EBF3;
+    --sys-outline: #DADEE1;
+    --sys-outline-variant: #B9D8E1;
+    --sys-surface-container-lowest: #254656;
+    --sys-surface-container-low: #376378;
+    --sys-surface-container: #447F98;
+    --sys-surface-container-high: #629BB5;
   }
 }
 
