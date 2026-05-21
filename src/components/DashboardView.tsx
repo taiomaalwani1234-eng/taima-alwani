@@ -39,6 +39,7 @@ interface DashboardViewProps {
     tutorial?: boolean,
   ) => void;
   userId?: number;
+  userRole?: string;
   onLogout?: () => void;
 }
 
@@ -62,6 +63,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onAvatarSelect,
   onSelectGame,
   userId,
+  userRole,
   onLogout,
 }) => {
   const [theme, setTheme] = useState<"light" | "dark">(
@@ -333,6 +335,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <Lock className="w-4 h-4 text-primary" />
                     <span className="text-on-surface font-medium">تغيير كلمة المرور</span>
                   </button>
+                  {userRole === 'admin' && (
                   <button 
                     onClick={() => onSelectGame("admin" as any)}
                     className="w-full flex justify-between items-center bg-primary/10 hover:bg-primary/20 p-3 rounded-xl text-sm border border-primary/30 transition-all hover:translate-x-1"
@@ -340,6 +343,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <Shield className="w-4 h-4 text-primary" />
                     <span className="text-primary font-bold">لوحة الإدارة</span>
                   </button>
+                  )}
                   {onLogout && (
                     <button 
                       onClick={onLogout}

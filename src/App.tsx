@@ -17,6 +17,7 @@ export default function App() {
   const [studentName, setStudentName] = useState('');
   const [studentLevel, setStudentLevel] = useState('');
   const [userId, setUserId] = useState<number>(0);
+  const [userRole, setUserRole] = useState<string>('user');
   const [tutorialMode, setTutorialMode] = useState<boolean>(false);
   const [avatarSeed, setAvatarSeed] = useState<string>('Aneka');
 
@@ -27,14 +28,17 @@ export default function App() {
       setStudentName(user.nickname || user.username);
       setStudentLevel(user.level || 'متدرب');
       setUserId(user.id);
+      setUserRole(user.role || 'user');
       setCurrentView('dashboard');
     }
   }, []);
 
   const handleLogin = (name: string, level: string, id: number) => {
+    const user = getCurrentUser();
     setStudentName(name);
     setStudentLevel(level);
     setUserId(id);
+    setUserRole(user?.role || 'user');
     setCurrentView('dashboard');
   };
 
@@ -80,11 +84,13 @@ export default function App() {
           onAvatarSelect={setAvatarSeed}
           onSelectGame={(game, tutorial) => handleSelectGame(game as ViewState, tutorial)} 
           userId={userId}
+          userRole={userRole}
           onLogout={() => {
             localStorage.removeItem('taima_user');
             setUserId(0);
             setStudentName('');
             setStudentLevel('');
+            setUserRole('user');
             setCurrentView('auth');
           }}
         />
@@ -139,7 +145,7 @@ export default function App() {
         />
       )}
 
-      {currentView === 'admin' && (
+      {currentView === 'admin' && userRole === 'admin' && (
         <AdminView onBack={() => setCurrentView('dashboard')} />
       )}
     </div>
