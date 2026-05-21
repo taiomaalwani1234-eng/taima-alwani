@@ -21,6 +21,8 @@
 | 2026-05-21 | تحسين الأداء على الهواتف المحمولة بإخفاء تراكب مسح CRT Scanning Overlay وتقليل تصفية Backdrop-blur للوحات الزجاجية إلى 4px لرفع معدل الإطارات (FPS). | `src/components/SecureCityView.tsx`, `src/index.css` |
 | 2026-05-21 | إزالة تضمين مفتاح البيئة الحساس `process.env.GEMINI_API_KEY` من حزمة الواجهة الأمامية في إعدادات Vite لمنع كشفه في المتصفح. | `vite.config.ts` |
 | 2026-05-21 | تطوير لعبة "اختراق الخادم" — محاكاة طرفية SSH كاملة مع 5 مراحل: إحاطة عسكرية، اتصال SSH، إدخال كلمة السر، استكشاف الخادم بأوامر Linux حقيقية، ونظام حظر fail2ban. تتضمن نظام نقاط وتقييم. | `src/components/SSHGameView.tsx`, `src/data/sshGameData.ts`, `src/App.tsx`, `src/components/DashboardView.tsx` |
+| 2026-05-21 | دفع التغيرات ولعبة محاكاة اختراق SSH والتحديثات الأخيرة بنجاح إلى مستودع GitHub. | جميع ملفات المشروع |
+
 
 ---
 
