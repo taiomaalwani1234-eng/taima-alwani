@@ -9,7 +9,7 @@ import {
   Activity,
   RefreshCw,
 } from "lucide-react";
-import { GoogleGenAI } from "@google/genai";
+import { generateJSON } from "../services/aiClient";
 
 import { TutorialOverlay } from "./TutorialOverlay";
 
@@ -18,7 +18,7 @@ interface FlashcardsViewProps {
   isTutorial?: boolean;
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
 
 const CACHE_KEY = "cyber_daily_tips_v1";
 const CACHE_DATE_KEY = "cyber_daily_tips_date_v1";
@@ -65,16 +65,8 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
 - category: مجال النصيحة (مثل: هندسة الشبكات، أمن الويب، أمن تطبيقات الهاتف، الجدار الناري البشري، الذكاء الاصطناعي الأمني، التشفير)
 - content: محتوى النصيحة المفصّل (واضح، علمي دقيق، وبناء).`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-        },
-      });
-
-      const rawText = response.text || "[]";
-      const generatedTips = JSON.parse(rawText) as Tip[];
+      const response = await generateJSON(prompt);
+      const generatedTips = JSON.parse(response) as Tip[];
 
       if (generatedTips.length > 0) {
         setTips(generatedTips);
