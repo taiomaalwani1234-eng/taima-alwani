@@ -49,7 +49,11 @@ export const AdminView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [adminPass, setAdminPass] = useState('');
 
   const fetchData = async (endpoint: string) => {
-    const res = await fetch(`${API_BASE}${endpoint}`);
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      headers: {
+        'X-Admin-Token': adminPass
+      }
+    });
     return res.json();
   };
 
@@ -104,10 +108,12 @@ export const AdminView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const handleDeleteUser = async (userId: number) => {
     if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
-    // We'll add delete endpoint
     try {
       await fetch(`${API_BASE}/admin/users/${userId}`, {
         method: 'DELETE',
+        headers: {
+          'X-Admin-Token': adminPass
+        }
       });
       loadUsers();
     } catch (err) {

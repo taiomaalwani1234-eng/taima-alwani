@@ -1,15 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup, CircleMarker, useMap, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
+import { Sector } from '../data/cityData';
 
-export interface Sector {
-  id: string;
-  name: string;
-  x: number;
-  y: number;
-  status: 'safe' | 'warning' | 'critical' | 'offline';
-  description: string;
-}
 
 interface CityMapProps {
   sectors: Sector[];

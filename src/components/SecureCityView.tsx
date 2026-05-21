@@ -21,6 +21,7 @@ import {
   HelpCircle,
   Sun,
   Moon,
+  ArrowRight,
 } from "lucide-react";
 import {
   LEVEL_1_SECTORS,
@@ -438,7 +439,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
         />
       )}
       {/* CRT Scanning Overlay */}
-      <div className="fixed inset-0 z-50 scanning-overlay opacity-20 pointer-events-none"></div>
+      <div className="fixed inset-0 z-50 scanning-overlay opacity-20 pointer-events-none hidden sm:block"></div>
 
       {/* Navigation Shell (TopAppBar) */}
       {/* Navigation Shell moved to GlobalHeader inside App, wait we just drop it here directly */}
@@ -449,13 +450,13 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
         budget={budget}
         avatarSeed={avatarSeed}
         onAvatarSelect={onAvatarSelect}
-        onToggleSidebar={(gameState === "playing" || gameState === "training") ? () => setShowMobileSidebar(!showMobileSidebar) : undefined}
+        onToggleSidebar={(gameState === "playing") ? () => setShowMobileSidebar(!showMobileSidebar) : undefined}
       />
 
       {gameState === "mode_selection" ? (
         <main className="pt-24 pb-12 px-6 h-full flex flex-col justify-center items-center relative z-10 w-full max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h1 className="text-[40px] md:text-[60px] font-h1-display font-bold text-primary mb-4 leading-none tracking-tight shadow-primary/20 drop-shadow-md">
+            <h1 className="text-[28px] sm:text-[40px] md:text-[60px] font-h1-display font-bold text-primary mb-4 leading-none tracking-tight shadow-primary/20 drop-shadow-md">
               المدينة الآمنة
             </h1>
             <p className="text-on-surface-variant max-w-2xl mx-auto text-lg">
@@ -505,7 +506,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
       ) : gameState === "menu" ? (
         <main className="pt-24 pb-12 px-6 h-full flex flex-col justify-center items-center relative z-10 w-full max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <h1 className="text-[40px] md:text-[60px] font-h1-display font-bold text-primary mb-4 leading-none tracking-tight shadow-primary/20 drop-shadow-md">
+            <h1 className="text-[28px] sm:text-[40px] md:text-[60px] font-h1-display font-bold text-primary mb-4 leading-none tracking-tight shadow-primary/20 drop-shadow-md">
               المدينة الآمنة
             </h1>
             <p className="text-on-surface-variant max-w-2xl mx-auto">
@@ -607,13 +608,14 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
             />
           )}
 
-          {/* Side Navigation */}
           <aside className={`
             ${showMobileSidebar ? "flex" : "hidden lg:flex"} 
-            fixed lg:static inset-0 z-[70] lg:z-40 mt-16 lg:mt-0 
-            order-2 lg:order-1 w-full lg:w-96 flex-col h-[calc(100vh-64px)] lg:h-full 
+            fixed lg:static inset-0 z-[70] mt-16 lg:mt-0 
+            order-2 lg:order-1 w-full lg:w-96 flex-col 
+            h-[calc(100dvh-64px)] lg:h-full 
             bg-surface-container-low border-t lg:border-t-0 lg:border-l border-outline-variant/20 
-            overflow-y-auto transition-all
+            overflow-y-auto overscroll-contain
+            [-webkit-overflow-scrolling:touch]
           `}>
             {/* Close button for mobile inside sidebar */}
             <div className="lg:hidden absolute top-4 left-4 z-50">
@@ -793,7 +795,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                 <TerminalIcon className="w-5 h-5" />
               </button>
               {showTerminal && (
-                <div className="bg-surface-container-lowest rounded-xl flex flex-col overflow-hidden min-h-[300px] border border-outline-variant/20">
+                <div className="bg-surface-container-lowest rounded-xl flex flex-col overflow-hidden min-h-[200px] sm:min-h-[300px] max-h-[40vh] lg:max-h-none border border-outline-variant/20">
                   <div className="flex justify-between items-center p-4 border-b border-outline-variant/20 shrink-0">
                     <span className="font-label-caps text-[12px] font-bold tracking-[0.15em] text-on-surface-variant">
                       TRAFFIC_FEED & OVERRIDE
@@ -868,9 +870,9 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
           </aside>
 
           {/* Main Workspace */}
-          <main className="order-1 lg:order-2 flex-1 flex flex-col relative z-10 w-full min-h-[50vh] lg:min-h-0">
+          <main className="order-1 lg:order-2 flex-1 flex flex-col relative z-10 w-full min-h-[50vh] lg:min-h-0 pb-16">
             {/* Center Map as Background */}
-            <div className="absolute inset-0 z-0 bg-background mix-blend-screen opacity-50 pointer-events-none"></div>
+            <div className="absolute inset-0 z-0 bg-background mix-blend-screen opacity-20 sm:opacity-50 pointer-events-none"></div>
             <div className="absolute inset-0 z-0 text-left" dir="ltr">
               <CityMap
                 sectors={sectors}
@@ -888,13 +890,13 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                 }}
                 theme={theme}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/50 pointer-events-none"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-background/30 sm:from-background via-transparent to-background/20 sm:to-background/50 pointer-events-none"></div>
             </div>
 
             {/* Overlays / Panels */}
             <div className="relative z-10 flex-1 grid grid-cols-12 gap-6 p-6 h-full overflow-hidden pointer-events-none">
               {/* Right Panel: Threat Intel (Left side of code but visually right due to RTL) */}
-              <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 pointer-events-auto h-full overflow-hidden">
+              <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 pointer-events-none h-full overflow-hidden">
                 {/* Threat Level */}
 
                 {/* Network Traffic / Terminal */}
@@ -969,7 +971,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
             {/* Province Hack Interface (Attacker / Defender) */}
             {provinceState.isOpen && (
               <div className="absolute inset-0 bg-surface/95 backdrop-blur-xl z-[150] flex flex-col pointer-events-auto text-right overflow-y-auto">
-                <div className="p-6 md:p-12 w-full max-w-[1440px] mx-auto min-h-screen">
+                <div className="p-4 sm:p-6 md:p-12 w-full max-w-[1440px] mx-auto">
                   {/* Close button */}
                   <div className="flex justify-end mb-4">
                     <button
@@ -1543,7 +1545,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
 
                           {/* Right Column: Infrastructure Grid */}
                           <div className="lg:col-span-8">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
                               {/* Targets Data */}
                               {[
                                 {
@@ -1764,6 +1766,18 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                     </>
                   )}
                 </div>
+              </div>
+            )}
+
+            {!provinceState.isOpen && (
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-[55] pointer-events-auto">
+                <button
+                  onClick={onBack}
+                  className="bg-primary text-on-primary px-6 py-3 rounded-full font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 text-sm sm:text-base whitespace-nowrap"
+                >
+                  <ArrowRight className="w-5 h-5" />
+                  العودة للوحة القيادة
+                </button>
               </div>
             )}
 

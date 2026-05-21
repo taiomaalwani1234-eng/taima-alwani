@@ -96,6 +96,10 @@
     border: 1px solid var(--color-outline-variant);
 }
 
+@media (max-width: 768px) {
+  .glass-panel { backdrop-filter: blur(4px); }
+}
+
 @keyframes shake {
   0% { transform: translate(1px, 1px) rotate(0deg); }
   10% { transform: translate(-1px, -2px) rotate(-1deg); }
