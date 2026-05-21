@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Popup, CircleMarker, useMap, ZoomControl } from 'react-leaflet';
+import React, { useEffect, useRef, useState } from 'react';
+import { MapContainer, TileLayer, Polyline, CircleMarker, useMap, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import { Sector } from '../data/cityData';
 
@@ -11,8 +11,8 @@ interface CityMapProps {
   theme?: 'light' | 'dark';
 }
 
-const mapXToLng = (x: number) => 35.5 + (x / 1000) * 7.0; // Longitude 35.5 to 42.5
-const mapYToLat = (y: number) => 32.0 + ((1000 - y) / 1000) * 5.5; // Latitude 32.0 to 37.5
+const mapXToLng = (x: number) => 35.5 + (x / 1000) * 7.0;
+const mapYToLat = (y: number) => 32.0 + ((1000 - y) / 1000) * 5.5;
 
 function MapBounds({ sectors }: { sectors: Sector[] }) {
   const map = useMap();
@@ -27,6 +27,66 @@ function MapBounds({ sectors }: { sectors: Sector[] }) {
       map.fitBounds(bounds, { animate: true });
     }
   }, [sectors.length, map]);
+  return null;
+}
+
+// Component that adds click-to-sector logic using map click events
+function SectorClickHandler({ sectors, onSectorClick }: { sectors: Sector[]; onSectorClick?: (id: string) => void }) {
+  const map = useMap();
+  const touchHandled = useRef(false);
+
+  useEffect(() => {
+    if (!onSectorClick) return;
+
+    const handleClick = (e: L.LeafletMouseEvent) => {
+      if (touchHandled.current) {
+        touchHandled.current = false;
+        return;
+      }
+      const { lat, lng } = e.latlng;
+      // Find nearest sector within threshold
+      let nearest: string | null = null;
+      let minDist = Infinity;
+      for (const s of sectors) {
+        const sLat = mapYToLat(s.y);
+        const sLng = mapXToLng(s.x);
+        const dist = Math.sqrt((lat - sLat) ** 2 + (lng - sLng) ** 2);
+        const threshold = 0.15 / (2 ** (map.getZoom() - 6)); // scale with zoom
+        if (dist < threshold && dist < minDist) {
+          minDist = dist;
+          nearest = s.id;
+        }
+      }
+      if (nearest) onSectorClick(nearest);
+    };
+
+    const handleTouch = (e: L.LeafletTouchEvent) => {
+      touchHandled.current = true;
+      if (!e.latlng) return;
+      const { lat, lng } = e.latlng;
+      let nearest: string | null = null;
+      let minDist = Infinity;
+      for (const s of sectors) {
+        const sLat = mapYToLat(s.y);
+        const sLng = mapXToLng(s.x);
+        const dist = Math.sqrt((lat - sLat) ** 2 + (lng - sLng) ** 2);
+        const threshold = 0.2 / (2 ** (map.getZoom() - 6));
+        if (dist < threshold && dist < minDist) {
+          minDist = dist;
+          nearest = s.id;
+        }
+      }
+      if (nearest) onSectorClick(nearest);
+    };
+
+    map.on('click', handleClick);
+    map.on('touchend', handleTouch);
+    return () => {
+      map.off('click', handleClick);
+      map.off('touchend', handleTouch);
+    };
+  }, [map, sectors, onSectorClick]);
+
   return null;
 }
 
@@ -62,11 +122,11 @@ export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSec
 
   const getStatusColor = (status: string) => {
     switch(status) {
-      case 'safe': return '#3BB2F6'; // primary
-      case 'warning': return '#fcd34d'; // Amber
-      case 'critical': return theme === 'light' ? '#ba1a1a' : '#ffb4ab'; // error
-      case 'offline': return theme === 'light' ? '#E4E9F7' : '#334155'; // surface variant
-      default: return '#06B6D4'; // secondary
+      case 'safe': return '#3BB2F6';
+      case 'warning': return '#fcd34d';
+      case 'critical': return theme === 'light' ? '#ba1a1a' : '#ffb4ab';
+      case 'offline': return theme === 'light' ? '#E4E9F7' : '#334155';
+      default: return '#06B6D4';
     }
   };
 
@@ -87,6 +147,9 @@ export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSec
         style={{ height: '100%', width: '100%', background: theme === 'light' ? '#F5F7FF' : '#0f172a' }}
         zoomControl={false}
         tap={true}
+        bounceAtZoomLimits={true}
+        maxZoom={12}
+        minZoom={4}
       >
         <ZoomControl position="bottomright" />
         <TileLayer
@@ -96,6 +159,7 @@ export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSec
         />
         <div className="absolute inset-0 z-[100] scanning-overlay opacity-20 pointer-events-none hidden sm:block"></div>
         <MapBounds sectors={sectors} />
+        <SectorClickHandler sectors={sectors} onSectorClick={onSectorClick} />
         
         {connections.map(([id1, id2], i) => {
           const s1 = sectors.find(s => s.id === id1);
@@ -145,17 +209,8 @@ export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSec
                 weight={2}
                 fillColor={color}
                 fillOpacity={1}
-                eventHandlers={{
-                  click: () => onSectorClick && onSectorClick(sector.id)
-                }}
-              >
-                <Popup className="font-sans" closeButton={false}>
-                  <div className="text-right" dir="rtl">
-                    <strong className="block text-sm mb-1">{sector.name}</strong>
-                    <span className="text-xs opacity-70">[{sector.status.toUpperCase()}]</span>
-                  </div>
-                </Popup>
-              </CircleMarker>
+                interactive={false}
+              />
             </React.Fragment>
           );
         })}
