@@ -380,13 +380,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               
               <button
                 onClick={() => onSelectGame("millionaire", true)}
-                className="w-full text-right bg-surface-variant/40 hover:bg-secondary/5 p-4 rounded-xl border border-outline-variant/30 transition-all group flex flex-row-reverse gap-3 items-center"
+                className="w-full text-right bg-surface-variant/40 hover:bg-primary/5 p-4 rounded-xl border border-outline-variant/30 transition-all group flex flex-row-reverse gap-3 items-center"
               >
-                <div className="p-3 rounded-xl bg-secondary/10 text-secondary group-hover:bg-secondary group-hover:text-white transition-colors shrink-0">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors shrink-0">
                   <Trophy className="w-5 h-5" />
                 </div>
                 <div>
-                  <h5 className="font-bold text-secondary text-sm mb-1">المليونير السيبراني</h5>
+                  <h5 className="font-bold text-primary text-sm mb-1">المليونير السيبراني</h5>
                   <p className="text-[11px] text-on-surface opacity-70 leading-normal">
                     تحديات الأسئلة المتدرجة، اختبر معلوماتك واحصل على المليون الافتراضي.
                   </p>
