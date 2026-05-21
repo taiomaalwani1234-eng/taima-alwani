@@ -8,9 +8,10 @@ import { AssessmentView } from './components/AssessmentView';
 import { CryptoPuzzleView } from './components/CryptoPuzzleView';
 import { CoursesView } from './components/CoursesView';
 import { AdminView } from './components/AdminView';
+import { SSHGameView } from './components/SSHGameView';
 import { saveProgress, updateLevel, getCurrentUser, saveUserLocally } from './services/backendApi';
 
-type ViewState = 'auth' | 'dashboard' | 'city' | 'millionaire' | 'flashcards' | 'assessment' | 'crypto' | 'courses' | 'admin';
+type ViewState = 'auth' | 'dashboard' | 'city' | 'millionaire' | 'flashcards' | 'assessment' | 'crypto' | 'courses' | 'admin' | 'ssh';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewState>('auth');
@@ -147,6 +148,13 @@ export default function App() {
 
       {currentView === 'admin' && userRole === 'admin' && (
         <AdminView onBack={() => setCurrentView('dashboard')} />
+      )}
+
+      {currentView === 'ssh' && (
+        <SSHGameView 
+          onBack={() => setCurrentView('dashboard')} 
+          studentName={studentName}
+        />
       )}
     </div>
   );

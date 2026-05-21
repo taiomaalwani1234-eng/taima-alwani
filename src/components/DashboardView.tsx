@@ -19,6 +19,7 @@ import {
   X,
   Shield,
   LogOut,
+  Terminal as TerminalLucide,
 } from "lucide-react";
 import { updateProfile, getCurrentUser, saveUserLocally } from "../services/backendApi";
 
@@ -35,7 +36,8 @@ interface DashboardViewProps {
       | "assessment"
       | "crypto"
       | "courses"
-      | "admin",
+      | "admin"
+      | "ssh",
     tutorial?: boolean,
   ) => void;
   userId?: number;
@@ -468,6 +470,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </p>
                 </div>
               </button>
+
+              <button
+                onClick={() => onSelectGame("ssh", true)}
+                className="w-full text-right bg-surface-variant/40 hover:bg-emerald-500/5 p-4 rounded-xl border border-outline-variant/30 transition-all group flex flex-row-reverse gap-3 items-center"
+              >
+                <div className="p-3 rounded-xl bg-emerald-600/10 text-emerald-500 group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
+                  <TerminalLucide className="w-5 h-5" />
+                </div>
+                <div>
+                  <h5 className="font-bold text-emerald-500 text-sm mb-1">اختراق الخادم (SSH)</h5>
+                  <p className="text-[11px] text-on-surface opacity-70 leading-normal">
+                    اخترق خادماً عبر SSH وتعلم أوامر Linux الحقيقية ونظام fail2ban.
+                  </p>
+                </div>
+              </button>
             </div>
           </div>
         )}
@@ -638,6 +655,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex gap-4 mt-6">
               <span
                 className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold`}
+              >
+                محاكاة عملية
+              </span>
+            </div>
+          </button>
+
+          {/* SSH Hack Card */}
+          <button
+            onClick={() => onSelectGame("ssh")}
+            className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant rounded-2xl hover:shadow-[-12px_12px_0px_#22c55e] transition-all hover:-translate-y-1 flex flex-col items-start h-full`}
+          >
+            <div
+              className={`w-12 h-12 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-emerald-500 group-hover:text-white transition-colors mb-4`}
+            >
+              <TerminalLucide className="w-6 h-6" />
+            </div>
+            <h2 className="text-2xl font-serif italic mb-4">
+              اختراق الخادم
+            </h2>
+            <p className="text-sm opacity-70 mb-auto leading-relaxed font-sans">
+              حاول اختراق خادم حقيقي عبر SSH — واجه نظام fail2ban إذا فشلت.
+              تعلّم أوامر Linux الحقيقية في بيئة آمنة.
+            </p>
+            <div className="flex gap-4 mt-6">
+              <span
+                className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-emerald-500/10 text-emerald-500 font-bold border-r-2 border-emerald-500`}
               >
                 محاكاة عملية
               </span>
