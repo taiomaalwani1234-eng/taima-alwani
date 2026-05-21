@@ -53,10 +53,15 @@ async function initDB(db: D1Database) {
 }
 
 export const onRequest: PagesFunction<Env> = async (context) => {
-  const { request, env } = context;
+  const { request, env, next } = context;
   const url = new URL(request.url);
   const path = url.pathname;
   const method = request.method;
+
+  // If the request is NOT for /api, let Pages serve the static assets
+  if (!path.startsWith('/api')) {
+    return next();
+  }
 
   // CORS preflight
   if (method === 'OPTIONS') {
