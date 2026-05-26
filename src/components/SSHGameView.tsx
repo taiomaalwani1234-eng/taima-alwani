@@ -8,8 +8,6 @@ import {
   Trophy,
   Skull,
   Unlock,
-  Sun,
-  Moon,
 } from 'lucide-react';
 import {
   generateTargetIP,
@@ -43,17 +41,12 @@ interface TerminalLine {
 interface SSHGameViewProps {
   onBack: () => void;
   studentName?: string;
-  isTutorial?: boolean;
+  onGameComplete?: (score: number) => void;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export const SSHGameView: React.FC<SSHGameViewProps> = ({ onBack, studentName }) => {
-  // Theme
-  const [theme, setTheme] = useState<'light' | 'dark'>(
-    document.documentElement.classList.contains('dark') ? 'dark' : 'light',
-  );
-
+export const SSHGameView: React.FC<SSHGameViewProps> = ({ onBack, studentName, onGameComplete }) => {
   // Game state
   const [phase, setPhase] = useState<GamePhase>('briefing');
   const [targetIP, setTargetIP] = useState(generateTargetIP);
@@ -69,7 +62,6 @@ export const SSHGameView: React.FC<SSHGameViewProps> = ({ onBack, studentName })
   const [exploreBonus, setExploreBonus] = useState(false);
   const [currentDir, setCurrentDir] = useState('/root');
   const [unbanInput, setUnbanInput] = useState('');
-  const [showScoreboard, setShowScoreboard] = useState(false);
   const [typingIndex, setTypingIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
 
@@ -303,7 +295,9 @@ export const SSHGameView: React.FC<SSHGameViewProps> = ({ onBack, studentName })
           addLine({ type: 'success', content: SECRET_TXT });
           if (!flagFound) {
             setFlagFound(true);
-            setScore((s) => s + SCORE_MAP.FLAG_FOUND);
+            const finalScore = score + SCORE_MAP.FLAG_FOUND;
+            setScore(finalScore);
+            onGameComplete?.(finalScore);
             setTimeout(() => setPhase('victory'), 2000);
           }
           break;
@@ -470,16 +464,7 @@ export const SSHGameView: React.FC<SSHGameViewProps> = ({ onBack, studentName })
     setExploreBonus(false);
     setCurrentDir('/root');
     setUnbanInput('');
-    setShowScoreboard(false);
   }, []);
-
-  // ── Theme toggle ──────────────────────────────────────────────────────
-
-  const toggleTheme = () => {
-    const next = theme === 'light' ? 'dark' : 'light';
-    setTheme(next);
-    document.documentElement.classList.toggle('dark', next === 'dark');
-  };
 
   // ── Start mission ─────────────────────────────────────────────────────
 
@@ -498,7 +483,11 @@ export const SSHGameView: React.FC<SSHGameViewProps> = ({ onBack, studentName })
   // ═══════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden bg-[#0a0a0a] text-[#00ff41]" style={{ fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace" }}>
+    <div className="w-full h-full flex flex-col overflow-hidden bg-[#0a0a0a] text-[#00ff41] relative" style={{ fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace" }}>
+      {/* إشارة أن اللعبة تعمل في الوضع الداكن دائماً */}
+      <div className="absolute bottom-2 left-2 text-[10px] text-gray-600 select-none z-50 pointer-events-none">
+        🖥️ Terminal Mode
+      </div>
 
       {/* ── Custom Header ─────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-2 bg-[#0d1117] border-b border-[#00ff41]/15 shrink-0 z-20">
@@ -519,13 +508,6 @@ export const SSHGameView: React.FC<SSHGameViewProps> = ({ onBack, studentName })
           <span className="text-xs font-mono text-[#00ff41]/80 bg-[#0a0a0a] px-2 py-1 rounded border border-[#00ff41]/20">
             🏆 {score} pt
           </span>
-          <button
-            onClick={toggleTheme}
-            className="p-1.5 rounded-full hover:bg-[#00ff41]/10 transition-colors text-[#00ff41]/60"
-            title={theme === 'dark' ? 'وضع فاتح' : 'وضع داكن'}
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
         </div>
       </div>
 

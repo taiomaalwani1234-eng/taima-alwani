@@ -25,6 +25,8 @@ export const AVATAR_SEEDS = [
   'Ryan',
 ];
 
+import { getDailyNotifications } from '../data/notifications';
+
 export const GlobalHeader: React.FC<GlobalHeaderProps> = ({ 
   onBack, 
   studentName, 
@@ -40,6 +42,14 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
   const [showSettingsProfile, setShowSettingsProfile] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
+  const [notificationsRead, setNotificationsRead] = useState(() => {
+    const lastRead = localStorage.getItem('taima_notifications_read');
+    const today = new Date().toDateString();
+    return lastRead === today;
+  });
+
+  const dailyNotifications = getDailyNotifications();
+
   React.useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -47,6 +57,14 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
+
+  const handleOpenNotifications = () => {
+    setShowNotifications(!showNotifications);
+    if (!notificationsRead) {
+      setNotificationsRead(true);
+      localStorage.setItem('taima_notifications_read', new Date().toDateString());
+    }
+  };
 
   const handleShare = (app: 'whatsapp' | 'messenger' | 'telegram' | 'native') => {
     const url = window.location.href;
@@ -86,6 +104,14 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-4">
+        {budget !== undefined && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 select-none">
+            <span className="text-[11px] text-on-surface-variant font-bold">الميزانية:</span>
+            <span className={`font-mono font-bold text-xs ${budget < 20000 ? 'text-error animate-pulse' : 'text-primary'}`}>
+              ${budget.toLocaleString()}
+            </span>
+          </div>
+        )}
         {onToggleSidebar && (
           <button 
             onClick={onToggleSidebar}
@@ -106,11 +132,13 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
 
         <div className="relative">
           <button 
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={handleOpenNotifications}
             className="text-primary active:scale-95 hover:bg-primary/20 p-2 rounded-full transition-all relative"
           >
             <Notifications className="w-5 h-5"/>
-            <span className="absolute top-1 right-2 w-2 h-2 bg-error rounded-full animate-bounce"></span>
+            {!notificationsRead && (
+              <span className="absolute top-1 right-2 w-2 h-2 bg-error rounded-full animate-bounce"></span>
+            )}
           </button>
         </div>
 
@@ -128,16 +156,24 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
         </div>
 
         {showNotifications && (
-          <div className="absolute top-full right-0 mt-2 w-64 md:w-72 bg-surface border border-outline-variant/20 rounded-xl shadow-lg p-4 z-50 animate-in fade-in slide-in-from-top-2">
+          <div className="absolute top-full right-0 mt-2 w-64 md:w-80 bg-surface border border-outline-variant/20 rounded-xl shadow-lg p-4 z-50 animate-in fade-in slide-in-from-top-2">
             <div className="flex justify-between items-center mb-2 border-b border-outline-variant/20 pb-2">
               <button onClick={() => setShowNotifications(false)} className="text-primary/50 hover:text-primary"><X className="w-4 h-4"/></button>
-              <h4 className="font-bold text-sm text-primary text-right">الإشعارات</h4>
+              <h4 className="font-bold text-sm text-primary text-right">الإشعارات اليومية 📅</h4>
             </div>
             <div className="space-y-2 text-right">
-              <div className="p-2 bg-surface-variant rounded text-xs text-on-surface">مرحباً بك في المحاكاة الأمنية!</div>
-              <div className="p-2 bg-error/10 text-error rounded text-xs">تأكد من مراجعة حالة الشبكة باستمرار.</div>
-              <div className="p-2 bg-surface-variant rounded text-xs text-on-surface">تحديث جديد: تمت إضافة مستويات جديدة للمحاكاة الأمنية! استعد للتحدي.</div>
-              <div className="p-2 bg-primary/10 text-primary rounded text-xs">إعلان: شارك نتيجتك مع أصدقائك وتنافسوا على لقب أفضل محلل أمني.</div>
+              {dailyNotifications.map((notif) => (
+                <div 
+                  key={notif.id}
+                  className="flex items-start gap-2 p-2.5 rounded-xl bg-surface-variant/50 border border-outline-variant/10 hover:border-primary/30 transition-all"
+                >
+                  <span className="text-lg">{notif.icon}</span>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-primary">{notif.title}</p>
+                    <p className="text-[11px] text-on-surface-variant mt-0.5 leading-relaxed">{notif.message}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

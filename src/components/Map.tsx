@@ -30,66 +30,6 @@ function MapBounds({ sectors }: { sectors: Sector[] }) {
   return null;
 }
 
-// Component that adds click-to-sector logic using map click events
-function SectorClickHandler({ sectors, onSectorClick }: { sectors: Sector[]; onSectorClick?: (id: string) => void }) {
-  const map = useMap();
-  const touchHandled = useRef(false);
-
-  useEffect(() => {
-    if (!onSectorClick) return;
-
-    const handleClick = (e: L.LeafletMouseEvent) => {
-      if (touchHandled.current) {
-        touchHandled.current = false;
-        return;
-      }
-      const { lat, lng } = e.latlng;
-      // Find nearest sector within threshold
-      let nearest: string | null = null;
-      let minDist = Infinity;
-      for (const s of sectors) {
-        const sLat = mapYToLat(s.y);
-        const sLng = mapXToLng(s.x);
-        const dist = Math.sqrt((lat - sLat) ** 2 + (lng - sLng) ** 2);
-        const threshold = 0.15 / (2 ** (map.getZoom() - 6)); // scale with zoom
-        if (dist < threshold && dist < minDist) {
-          minDist = dist;
-          nearest = s.id;
-        }
-      }
-      if (nearest) onSectorClick(nearest);
-    };
-
-    const handleTouch = (e: L.LeafletTouchEvent) => {
-      touchHandled.current = true;
-      if (!e.latlng) return;
-      const { lat, lng } = e.latlng;
-      let nearest: string | null = null;
-      let minDist = Infinity;
-      for (const s of sectors) {
-        const sLat = mapYToLat(s.y);
-        const sLng = mapXToLng(s.x);
-        const dist = Math.sqrt((lat - sLat) ** 2 + (lng - sLng) ** 2);
-        const threshold = 0.2 / (2 ** (map.getZoom() - 6));
-        if (dist < threshold && dist < minDist) {
-          minDist = dist;
-          nearest = s.id;
-        }
-      }
-      if (nearest) onSectorClick(nearest);
-    };
-
-    map.on('click', handleClick);
-    map.on('touchend', handleTouch);
-    return () => {
-      map.off('click', handleClick);
-      map.off('touchend', handleTouch);
-    };
-  }, [map, sectors, onSectorClick]);
-
-  return null;
-}
-
 export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSectorClick, theme = 'dark' }) => {
   const connections = [
     ['central_hub', 'power_grid'],
@@ -159,7 +99,6 @@ export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSec
         />
         <div className="absolute inset-0 z-[100] scanning-overlay opacity-20 pointer-events-none hidden sm:block"></div>
         <MapBounds sectors={sectors} />
-        <SectorClickHandler sectors={sectors} onSectorClick={onSectorClick} />
         
         {connections.map(([id1, id2], i) => {
           const s1 = sectors.find(s => s.id === id1);
@@ -194,22 +133,33 @@ export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSec
               {(isActive || sector.status === 'critical' || sector.status === 'warning') && (
                 <CircleMarker
                   center={[lat, lng]}
-                  radius={isActive ? 25 : 20}
+                  radius={isActive ? (isMobile ? 32 : 24) : (isMobile ? 26 : 18)}
                   color={color}
                   fillColor={color}
-                  fillOpacity={0.1}
+                  fillOpacity={0.15}
                   weight={isActive ? 3 : 2}
                   dashArray={isActive ? "5, 5" : undefined}
+                  interactive={true}
+                  eventHandlers={{
+                    click: () => {
+                      if (onSectorClick) onSectorClick(sector.id);
+                    }
+                  }}
                 />
               )}
               <CircleMarker
                 center={[lat, lng]}
-                radius={isMobile ? 14 : 8}
-                color={theme === 'light' ? '#F5F7FF' : '#0f172a'}
+                radius={isActive ? (isMobile ? 22 : 14) : (isMobile ? 16 : 8)}
+                color={theme === 'light' ? '#FFFFFF' : '#0f172a'}
                 weight={2}
                 fillColor={color}
                 fillOpacity={1}
-                interactive={false}
+                interactive={true}
+                eventHandlers={{
+                  click: () => {
+                    if (onSectorClick) onSectorClick(sector.id);
+                  }
+                }}
               />
             </React.Fragment>
           );

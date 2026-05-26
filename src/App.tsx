@@ -9,7 +9,8 @@ import { CryptoPuzzleView } from './components/CryptoPuzzleView';
 import { CoursesView } from './components/CoursesView';
 import { AdminView } from './components/AdminView';
 import { SSHGameView } from './components/SSHGameView';
-import { saveProgress, updateLevel, getCurrentUser, saveUserLocally } from './services/backendApi';
+import { saveProgress, updateLevel, getCurrentUser, saveUserLocally, getUserGameProgress } from './services/backendApi';
+import { GameProgress } from './data/gameProgression';
 
 type ViewState = 'auth' | 'dashboard' | 'city' | 'millionaire' | 'flashcards' | 'assessment' | 'crypto' | 'courses' | 'admin' | 'ssh';
 
@@ -21,6 +22,15 @@ export default function App() {
   const [userRole, setUserRole] = useState<string>('user');
   const [tutorialMode, setTutorialMode] = useState<boolean>(false);
   const [avatarSeed, setAvatarSeed] = useState<string>('Aneka');
+  const [gameProgress, setGameProgress] = useState<GameProgress>({
+    assessment: false,
+    crypto: false,
+    millionaire: false,
+    city_level1: false,
+    city_level2: false,
+    city_level3: false,
+    ssh: false,
+  });
 
   // Restore session on mount
   React.useEffect(() => {
@@ -31,6 +41,7 @@ export default function App() {
       setUserId(user.id);
       setUserRole(user.role || 'user');
       setCurrentView('dashboard');
+      getUserGameProgress(user.id).then(setGameProgress);
     }
   }, []);
 
@@ -41,6 +52,7 @@ export default function App() {
     setUserId(id);
     setUserRole(user?.role || 'user');
     setCurrentView('dashboard');
+    getUserGameProgress(id).then(setGameProgress);
   };
 
   const handleUpdateLevel = async (level: string) => {
@@ -49,6 +61,8 @@ export default function App() {
       try {
         await updateLevel(userId, level);
         await saveProgress(userId, 'assessment', { level, completedAt: new Date().toISOString() });
+        const updated = await getUserGameProgress(userId);
+        setGameProgress(updated);
       } catch (err) {
         console.error('Failed to save level:', err);
       }
@@ -60,6 +74,8 @@ export default function App() {
     if (userId) {
       try {
         await saveProgress(userId, gameType, data);
+        const updated = await getUserGameProgress(userId);
+        setGameProgress(updated);
       } catch (err) {
         console.error('Failed to save progress:', err);
       }
@@ -86,6 +102,8 @@ export default function App() {
           onSelectGame={(game, tutorial) => handleSelectGame(game as ViewState, tutorial)} 
           userId={userId}
           userRole={userRole}
+          gameProgress={gameProgress}
+          onRefreshProgress={() => getUserGameProgress(userId).then(setGameProgress)}
           onLogout={() => {
             localStorage.removeItem('taima_user');
             setUserId(0);
@@ -102,6 +120,7 @@ export default function App() {
           studentName={studentName} 
           onBack={() => setCurrentView('dashboard')} 
           isTutorial={tutorialMode}
+          onGameComplete={(money) => handleGameEnd('millionaire', { completed: money >= 1000, money })}
         />
       )}
       
@@ -113,6 +132,9 @@ export default function App() {
           onAvatarSelect={setAvatarSeed}
           onBack={() => setCurrentView('dashboard')} 
           isTutorial={tutorialMode}
+          onGameComplete={handleGameEnd}
+          gameProgress={gameProgress}
+          userRole={userRole}
         />
       )}
 
@@ -136,6 +158,7 @@ export default function App() {
         <CryptoPuzzleView 
           onBack={() => setCurrentView('dashboard')} 
           isTutorial={tutorialMode}
+          onGameComplete={(data) => handleGameEnd('crypto', data)}
         />
       )}
 
@@ -154,6 +177,7 @@ export default function App() {
         <SSHGameView 
           onBack={() => setCurrentView('dashboard')} 
           studentName={studentName}
+          onGameComplete={(score) => handleGameEnd('ssh', { completed: true, score })}
         />
       )}
     </div>

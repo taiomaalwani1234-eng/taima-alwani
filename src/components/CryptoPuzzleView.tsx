@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { GlobalHeader } from "./GlobalHeader";
 import { getRandomPuzzles, CryptoPuzzle } from "../data/cryptoPuzzles";
-import { LogOut, RefreshCcw, CheckCircle, Terminal } from "lucide-react";
+import { LogOut, RefreshCcw, CheckCircle, Terminal, Coins } from "lucide-react";
 
 import { TutorialOverlay } from "./TutorialOverlay";
 
 interface CryptoPuzzleViewProps {
   onBack: () => void;
   isTutorial?: boolean;
+  onGameComplete?: (data: any) => void;
 }
 
 interface PoolChar {
@@ -19,6 +19,7 @@ interface PoolChar {
 export const CryptoPuzzleView: React.FC<CryptoPuzzleViewProps> = ({
   onBack,
   isTutorial = false,
+  onGameComplete,
 }) => {
   const [showTutorial, setShowTutorial] = useState(isTutorial);
   const [currentPuzzles] = useState<CryptoPuzzle[]>(() => getRandomPuzzles(10));
@@ -29,8 +30,40 @@ export const CryptoPuzzleView: React.FC<CryptoPuzzleViewProps> = ({
   const [isSuccess, setIsSuccess] = useState(false);
   const [gameComplete, setGameComplete] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
+  const [showAdminHint, setShowAdminHint] = useState(false);
+
+  // نظام الرصيد والإحصاءات
+  const [credits, setCredits] = useState(100);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
 
   const currentPuzzle = currentPuzzles[currentIndex];
+
+  // دالة تشغيل صوت الإنذار عند الخطأ
+  const playAlarmSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      // صوت إنذار (sawtooth wave مع تغيير التردد)
+      oscillator.type = "sawtooth";
+      oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.5);
+      
+      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+      
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.5);
+    } catch (e) {
+      console.warn("Audio not supported");
+    }
+  };
 
   useEffect(() => {
     if (gameComplete) return;
@@ -52,7 +85,11 @@ export const CryptoPuzzleView: React.FC<CryptoPuzzleViewProps> = ({
     setSlots(Array(answerChars.length).fill(null));
     setIsError(false);
     setIsSuccess(false);
-  }, [currentIndex, gameComplete]);
+
+    // إعادة تعيين التلميح وكلمة المرور للسؤال الجديد
+    setShowAdminHint(false);
+    setAdminPassword("");
+  }, [currentIndex, gameComplete, currentPuzzle.answer]);
 
   useEffect(() => {
     // Check answer when all slots are filled
@@ -60,19 +97,30 @@ export const CryptoPuzzleView: React.FC<CryptoPuzzleViewProps> = ({
       const attempt = slots.map((id) => pool[id!].char).join("");
       if (attempt === currentPuzzle.answer) {
         setIsSuccess(true);
+        setCredits((prev) => prev + 10);
+        setCorrectCount((prev) => prev + 1);
         setTimeout(() => {
           if (currentIndex < currentPuzzles.length - 1) {
             setCurrentIndex((prev) => prev + 1);
           } else {
             setGameComplete(true);
+            onGameComplete?.({ completed: true, credits: credits + 10, correctCount: correctCount + 1, wrongCount });
           }
         }, 1500);
       } else {
         setIsError(true);
-        setTimeout(() => setIsError(false), 800);
+        playAlarmSound();
+        setCredits((prev) => Math.max(0, prev - 5));
+        setWrongCount((prev) => prev + 1);
+        setTimeout(() => {
+          setIsError(false);
+          // مسح الخانات تلقائياً عند الخطأ لتسهيل المحاولة مجدداً
+          setSlots(Array(currentPuzzle.answer.length).fill(null));
+          setPool((prevPool) => prevPool.map((p) => ({ ...p, used: false })));
+        }, 800);
       }
     }
-  }, [slots, pool, currentPuzzle, currentIndex]);
+  }, [slots, pool, currentPuzzle, currentIndex, currentPuzzles.length]);
 
   const handlePoolClick = (poolId: number) => {
     if (pool[poolId].used || isSuccess) return;
@@ -108,23 +156,69 @@ export const CryptoPuzzleView: React.FC<CryptoPuzzleViewProps> = ({
     setPool(pool.map((p) => ({ ...p, used: false })));
   };
 
+  const handleRevealHint = () => {
+    if (adminPassword === "admin") {
+      if (showAdminHint) return;
+
+      if (credits < 20) {
+        alert("رصيدك غير كافٍ لاستخدام المساعدة! (يلزم 20 نقطة على الأقل)");
+        return;
+      }
+      setCredits((prev) => Math.max(0, prev - 20));
+      setHintsUsed((prev) => prev + 1);
+      setShowAdminHint(true);
+    }
+  };
+
   if (gameComplete) {
     return (
-      <div className="w-full h-full bg-on-background text-background flex flex-col items-center justify-center font-sans">
-        <CheckCircle className="w-24 h-24 text-green-500 mb-8" />
-        <h1 className="text-4xl sm:text-5xl font-serif italic mb-4">
-          اكتمل التحدي
-        </h1>
-        <p className="text-lg opacity-80 mb-8 max-w-lg text-center leading-relaxed">
-          أحسنت! لقد تمكنت من حل جميع الألغاز البرمجية والتشفيرية بنجاح. معرفتك
-          العملية ممتازة.
-        </p>
-        <button
-          onClick={onBack}
-          className="px-8 py-4 bg-primary hover:bg-[#8A3A25] transition-colors text-white text-[11px] uppercase tracking-widest font-bold"
-        >
-          العودة لمركز الأكاديمية
-        </button>
+      <div className="w-full h-full bg-surface-variant flex flex-col items-center justify-center font-sans p-6 text-on-background">
+        <div className="max-w-md w-full bg-surface p-8 border border-on-background/10 shadow-[8px_8px_0px_#1A1A1A] text-center space-y-6">
+          <CheckCircle className="w-20 h-20 text-green-500 mx-auto drop-shadow-[0_0_15px_rgba(34,197,94,0.3)] animate-bounce" />
+          
+          <div className="space-y-2">
+            <h1 className="text-3xl sm:text-4xl font-serif italic font-bold text-primary">
+              اكتمل التحدي بنجاح! 🎉
+            </h1>
+            <p className="text-xs text-on-surface-variant uppercase tracking-widest">
+              تم حل جميع الألغاز البرمجية والتشفيرية
+            </p>
+          </div>
+          
+          <p className="text-sm leading-relaxed opacity-80">
+            أحسنت صنعاً! لقد أظهرت مهارات ممتازة في فك التشفير وفهم أوامر الأنظمة السيبرانية. إليك تفاصيل أدائك:
+          </p>
+          
+          {/* ملخص الأداء */}
+          <div className="grid grid-cols-2 gap-3 py-4">
+            <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
+              <p className="text-green-500 text-2xl font-mono font-bold">{correctCount}</p>
+              <p className="text-[10px] font-semibold text-on-surface opacity-70">إجابات صحيحة</p>
+            </div>
+            
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
+              <p className="text-red-500 text-2xl font-mono font-bold">{wrongCount}</p>
+              <p className="text-[10px] font-semibold text-on-surface opacity-70">إجابات خاطئة</p>
+            </div>
+            
+            <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-center col-span-2 sm:col-span-1">
+              <p className="text-primary text-2xl font-mono font-bold">{credits}</p>
+              <p className="text-[10px] font-semibold text-on-surface opacity-70">الرصيد النهائي</p>
+            </div>
+            
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center col-span-2 sm:col-span-1">
+              <p className="text-amber-600 text-2xl font-mono font-bold">{hintsUsed}</p>
+              <p className="text-[10px] font-semibold text-on-surface opacity-70">تلميحات مستخدمة</p>
+            </div>
+          </div>
+          
+          <button
+            onClick={onBack}
+            className="w-full py-4 bg-primary hover:brightness-110 transition-all text-on-primary text-[11px] uppercase tracking-widest font-bold shadow-md hover:-translate-y-0.5 active:translate-y-0"
+          >
+            العودة لمركز الأكاديمية
+          </button>
+        </div>
       </div>
     );
   }
@@ -168,7 +262,7 @@ export const CryptoPuzzleView: React.FC<CryptoPuzzleViewProps> = ({
           >
             <LogOut className="w-3 h-3" /> العودة للمركز
           </button>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 mt-2">
             <h1 className="text-4xl sm:text-5xl font-serif italic font-light tracking-tighter leading-none text-primary">
               تشفير وأوامر
             </h1>
@@ -183,13 +277,21 @@ export const CryptoPuzzleView: React.FC<CryptoPuzzleViewProps> = ({
             حل الشفرات التشغيلية
           </p>
         </div>
-        <div className="hidden sm:block text-right">
-          <p className="text-[10px] uppercase tracking-widest opacity-50">
-            التقدم
-          </p>
-          <p className="font-serif italic font-bold text-2xl text-primary">
-            {currentIndex + 1} / {currentPuzzles.length}
-          </p>
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 text-right">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-outline shadow-sm">
+            <Coins className="w-4 h-4 text-primary animate-pulse" />
+            <span className="text-on-surface font-bold font-mono text-sm">{credits}</span>
+            <span className="text-on-surface-variant text-[10px] font-bold">رصيد</span>
+          </div>
+          
+          <div className="hidden sm:block">
+            <p className="text-[10px] uppercase tracking-widest opacity-50">
+              التقدم
+            </p>
+            <p className="font-serif italic font-bold text-2xl text-primary">
+              {currentIndex + 1} / {currentPuzzles.length}
+            </p>
+          </div>
         </div>
       </header>
 
@@ -199,7 +301,7 @@ export const CryptoPuzzleView: React.FC<CryptoPuzzleViewProps> = ({
         <div
           className={`w-full max-w-3xl flex flex-col mt-4 sm:mt-12 ${showTutorial ? "bg-background/90 p-8 rounded-3xl shadow-2xl backdrop-blur-sm transition-all" : ""}`}
         >
-          <div className="flex items-center gap-3 mb-6 self-start bg-white px-4 py-2 border border-on-background/20 shadow-[4px_4px_0px_#1A1A1A]">
+          <div className="flex items-center gap-3 mb-6 self-start bg-surface px-4 py-2 border border-on-background/20 shadow-[4px_4px_0px_#1A1A1A]">
             <Terminal className="w-5 h-5 text-primary" />
             <span className="text-[11px] uppercase tracking-widest font-bold">
               {currentPuzzle.type === "crypto" ? "تحدي تشفير" : "تحدي أوامر"}
@@ -230,7 +332,7 @@ export const CryptoPuzzleView: React.FC<CryptoPuzzleViewProps> = ({
                       ? "bg-green-500 border-green-600 text-white shadow-[0_0_15px_rgba(34,197,94,0.5)]"
                       : isError
                         ? "bg-red-500 border-red-600 text-white"
-                        : "bg-white border-on-background text-on-background shadow-[4px_4px_0px_#1A1A1A]"
+                        : "bg-surface border-on-background text-on-background shadow-[4px_4px_0px_#1A1A1A]"
                     : "bg-transparent border-on-background/20 border-dashed hover:border-on-background/50"
                 }`}
               >
@@ -300,17 +402,32 @@ export const CryptoPuzzleView: React.FC<CryptoPuzzleViewProps> = ({
             <p className="text-[10px] uppercase tracking-widest font-bold opacity-50">
               تلميح الإدارة
             </p>
-            <input
-              type="password"
-              placeholder="كلمة سر المدير..."
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              className="px-4 py-3 bg-transparent border border-on-background/20 text-center font-mono w-full focus:outline-none focus:border-primary transition-colors shadow-inner placeholder-on-background/30"
-              dir="ltr"
-            />
-            {adminPassword === "admin" && (
+            <div className="w-full flex gap-2">
+              <input
+                type="password"
+                placeholder="كلمة سر المدير..."
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className="px-4 py-3 bg-transparent border border-on-background/20 text-center font-mono flex-1 focus:outline-none focus:border-primary transition-colors shadow-inner placeholder-on-background/30"
+                dir="ltr"
+              />
+              {adminPassword === "admin" && !showAdminHint && (
+                <button
+                  onClick={handleRevealHint}
+                  className="px-4 py-3 bg-primary hover:brightness-110 text-on-primary font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  كشف التلميح
+                </button>
+              )}
+            </div>
+            
+            <div className="text-[10px] text-on-surface-variant font-medium mt-1">
+              💡 تكلفة التلميح: 20 نقطة | رصيدك الحالي: {credits}
+            </div>
+            
+            {showAdminHint && (
               <div className="w-full mt-2 text-primary font-mono text-xl font-bold bg-primary/10 px-6 py-4 border border-primary/30 text-center shadow-sm">
-                الحل: {currentPuzzle.answer}
+                الحل الصحيح: {currentPuzzle.answer}
               </div>
             )}
           </div>

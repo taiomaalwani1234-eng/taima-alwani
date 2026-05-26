@@ -22,6 +22,8 @@ import {
   Terminal as TerminalLucide,
 } from "lucide-react";
 import { updateProfile, getCurrentUser, saveUserLocally } from "../services/backendApi";
+import { GameProgress, isGameUnlocked, getMissingRequirements } from "../data/gameProgression";
+import { getDailyNotifications } from "../data/notifications";
 
 interface DashboardViewProps {
   studentName: string;
@@ -43,6 +45,8 @@ interface DashboardViewProps {
   userId?: number;
   userRole?: string;
   onLogout?: () => void;
+  gameProgress?: GameProgress;
+  onRefreshProgress?: () => void;
 }
 
 export const AVATAR_SEEDS = [
@@ -67,13 +71,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   userId,
   userRole,
   onLogout,
+  gameProgress = {
+    assessment: false,
+    crypto: false,
+    millionaire: false,
+    city_level1: false,
+    city_level2: false,
+    city_level3: false,
+    ssh: false,
+  },
+  onRefreshProgress,
 }) => {
   const [theme, setTheme] = useState<"light" | "dark">(
     document.documentElement.classList.contains("dark") ? "dark" : "light",
   );
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationsRead, setNotificationsRead] = useState(() => {
+    const lastRead = localStorage.getItem('taima_notifications_read');
+    const today = new Date().toDateString();
+    return lastRead === today;
+  });
   const [showSettingsProfile, setShowSettingsProfile] = useState(false);
-  const [showAccountForm, setShowAccountForm] = useState<"name" | "password" | "email" | null>(null);
+  const [showAccountForm, setShowAccountForm] = useState<"name" | "password" | null>(null);
   const [accountValue, setAccountValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -89,12 +108,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const textClass = theme === "dark" ? "text-[#d9e2ff]" : "text-on-background";
 
-  const motivationalQuotes = [
-    "حان وقت حماية النظام، هل أنت مستعد للتحدي اليوم؟",
-    "المدينة الآمنة بانتظارك، لا تدع المخترقين يفوزون بمحاولاتهم!",
-    "تدريبك اليومي يجعلك أقوى، استكمل دوراتك لتصل للاحتراف.",
-    "راجع أهدافك في الخطة الدراسية الذكية وانطلق!",
-  ];
+  const isCryptoUnlocked = isGameUnlocked("crypto", gameProgress, userRole === "admin");
+  const cryptoMissingReqs = getMissingRequirements("crypto", gameProgress);
+
+  const isMillionaireUnlocked = isGameUnlocked("millionaire", gameProgress, userRole === "admin");
+  const millionaireMissingReqs = getMissingRequirements("millionaire", gameProgress);
+
+  const isCityUnlocked = isGameUnlocked("city", gameProgress, userRole === "admin");
+  const cityMissingReqs = getMissingRequirements("city", gameProgress);
+
+  const isSshUnlocked = isGameUnlocked("ssh", gameProgress, userRole === "admin");
+  const sshMissingReqs = getMissingRequirements("ssh", gameProgress);
+
+  const dailyNotifications = getDailyNotifications();
 
   return (
     <div className="w-full h-full bg-background text-on-background flex flex-col items-center p-4 sm:p-8 overflow-y-auto transition-colors duration-500 relative">
@@ -126,15 +152,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="static">
             <button
               onClick={() => {
-                setShowNotifications(!showNotifications);
+                const nextShow = !showNotifications;
+                setShowNotifications(nextShow);
                 setShowSettingsProfile(false);
                 setShowHelp(false);
+                if (nextShow && !notificationsRead) {
+                  setNotificationsRead(true);
+                  localStorage.setItem('taima_notifications_read', new Date().toDateString());
+                }
               }}
               className={`text-primary active:scale-95 p-3 md:p-2 rounded-full transition-all border border-transparent flex flex-col md:flex-row items-center gap-1 ${showNotifications ? 'bg-primary/20 border-primary/30' : 'hover:bg-primary/10 hover:border-primary/20'}`}
             >
               <div className="relative">
                 <Notifications className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full animate-pulse shadow-[0_0_8px_rgba(255,0,0,0.8)]"></span>
+                {!notificationsRead && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full animate-pulse shadow-[0_0_8px_rgba(255,0,0,0.8)]"></span>
+                )}
               </div>
               <span className="text-[9px] font-bold md:hidden uppercase opacity-60">التنبيهات</span>
             </button>
@@ -188,19 +221,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="absolute top-full right-4 left-4 md:left-auto md:right-0 mt-3 md:w-80 bg-surface/95 backdrop-blur-md border border-outline-variant/30 rounded-2xl shadow-2xl p-5 z-[70] animate-in fade-in slide-in-from-top-2">
             <div className="flex justify-between items-center mb-4 border-b border-primary/20 pb-2">
               <button onClick={() => setShowNotifications(false)} className="text-primary/50 hover:text-primary transition-colors hover:bg-primary/10 p-1 rounded-full"><X className="w-4 h-4"/></button>
-              <h4 className="font-bold text-[14px] text-primary text-right">
+              <h4 className="font-bold text-[14px] text-primary text-right flex items-center justify-end gap-2">
                 الإشعارات اليومية
+                <span className="text-[10px] text-on-surface-variant font-normal">
+                  ({new Date().toLocaleDateString('ar-SY')})
+                </span>
               </h4>
             </div>
             <div className="space-y-3 text-right">
-              {motivationalQuotes.map((quote, idx) => (
+              {dailyNotifications.map((notif) => (
                 <div
-                  key={idx}
-                  className="p-3 bg-primary/5 border border-primary/10 rounded-lg text-xs text-on-surface font-medium leading-relaxed"
+                  key={notif.id}
+                  className="flex items-start gap-2.5 p-3 rounded-xl bg-surface-variant/50 border border-outline-variant/10 hover:border-primary/30 transition-all text-on-surface"
                 >
-                  {quote}
+                  <span className="text-lg select-none">{notif.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-primary leading-tight">{notif.title}</p>
+                    <p className="text-[11px] text-on-surface-variant mt-1 leading-normal">{notif.message}</p>
+                  </div>
                 </div>
               ))}
+            </div>
+            <div className="mt-4 text-center border-t border-outline-variant/10 pt-2">
+              <span className="text-[9px] text-on-surface-variant/60 block">
+                يتم تحديث الإشعارات تلقائياً يومياً 📅
+              </span>
             </div>
           </div>
         )}
@@ -275,16 +320,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       إلغاء
                     </button>
                     <span className="text-xs font-bold text-primary">
-                      {showAccountForm === "name" ? "تغيير الاسم" : showAccountForm === "email" ? "البريد الإلكتروني" : "كلمة المرور"}
+                      {showAccountForm === "name" ? "تغيير الاسم" : "كلمة المرور"}
                     </span>
                   </div>
                   <input 
                     type={showAccountForm === "password" ? "password" : "text"}
-                    placeholder={showAccountForm === "name" ? "الاسم الجديد" : showAccountForm === "email" ? "البريد الجديد" : "كلمة المرور الجديدة"}
+                    placeholder={showAccountForm === "name" ? "الاسم الجديد" : "كلمة المرور الجديدة"}
                     value={accountValue}
                     onChange={(e) => setAccountValue(e.target.value)}
                     className="w-full bg-surface border border-outline-variant/50 rounded-lg p-2.5 text-sm mb-3 focus:outline-none focus:border-primary transition-all"
-                    dir={showAccountForm === "email" || showAccountForm === "password" ? "ltr" : "rtl"}
+                    dir={showAccountForm === "password" ? "ltr" : "rtl"}
                   />
                   <button 
                     onClick={async () => {
@@ -294,7 +339,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       try {
                         const updates: any = {};
                         if (showAccountForm === "name") updates.nickname = accountValue.trim();
-                        if (showAccountForm === "email") updates.email = accountValue.trim();
                         if (showAccountForm === "password") updates.password = accountValue.trim();
                         const res = await updateProfile(user.id, updates);
                         if (res.user) {
@@ -323,13 +367,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <User className="w-4 h-4 text-primary" />
                     <span className="text-on-surface font-medium">تعديل الاسم المستعار</span>
                   </button>
-                  <button 
-                    onClick={() => { setShowAccountForm("email"); setAccountValue(''); }}
-                    className="w-full flex justify-between items-center bg-surface-variant/30 hover:bg-surface-variant/70 p-3 rounded-xl text-sm border border-outline-variant/30 transition-all hover:translate-x-1"
-                  >
-                    <Mail className="w-4 h-4 text-primary" />
-                    <span className="text-on-surface font-medium">البريد الإلكتروني</span>
-                  </button>
+                  <div className="w-full flex justify-between items-center bg-surface-variant/10 p-3 rounded-xl text-sm border border-outline-variant/20 opacity-80 cursor-default select-none">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-on-surface/40" />
+                      <span className="text-on-surface/60 font-medium">البريد الإلكتروني</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-on-surface/60 font-mono" dir="ltr">
+                        {getCurrentUser()?.email || 'غير محدد'}
+                      </span>
+                      <Lock className="w-3.5 h-3.5 text-on-surface/40" title="لا يمكن تغيير البريد الإلكتروني" />
+                    </div>
+                  </div>
                   <button 
                     onClick={() => { setShowAccountForm("password"); setAccountValue(''); }}
                     className="w-full flex justify-between items-center bg-surface-variant/30 hover:bg-surface-variant/70 p-3 rounded-xl text-sm border border-outline-variant/30 transition-all hover:translate-x-1"
@@ -586,11 +635,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Crypto Puzzles */}
           <button
-            onClick={() => onSelectGame("crypto")}
-            className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant rounded-2xl hover:shadow-[-12px_12px_0px_var(--sys-primary)] transition-all hover:-translate-y-1 flex flex-col items-start h-full`}
+            onClick={() => isCryptoUnlocked ? onSelectGame("crypto") : null}
+            disabled={!isCryptoUnlocked}
+            className={`group relative text-right p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border rounded-2xl transition-all duration-300 flex flex-col items-start h-full
+              ${isCryptoUnlocked 
+                ? 'bg-surface border-outline-variant hover:shadow-[-12px_12px_0px_var(--sys-primary)] hover:-translate-y-1 cursor-pointer' 
+                : 'bg-surface/50 border-outline/10 cursor-not-allowed'
+              }`}
+            style={!isCryptoUnlocked ? { filter: 'grayscale(100%)', opacity: 0.6 } : {}}
           >
+            {!isCryptoUnlocked && (
+              <div className="absolute top-3 left-3 z-10 animate-in fade-in">
+                <div className="p-2 rounded-full bg-error/20 backdrop-blur">
+                  <Lock className="w-4 h-4 text-error" />
+                </div>
+              </div>
+            )}
             <div
-              className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4`}
+              className={`w-12 h-12 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center rounded-none transition-colors mb-4
+                ${isCryptoUnlocked ? 'text-primary group-hover:bg-primary' : 'text-gray-500'}`}
             >
               <Key className="w-6 h-6" />
             </div>
@@ -599,6 +662,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               حل ألغاز تعتمد على الكلمات للتعرف على أشهر الأوامر وخوارزميات
               التشفير المستخدمة في بناء الأنظمة.
             </p>
+            
+            {!isCryptoUnlocked && cryptoMissingReqs.length > 0 && (
+              <div className="mt-4 p-2 rounded-lg bg-error/5 border border-error/20 w-full text-right animate-in slide-in-from-bottom-2">
+                <p className="text-[10px] text-error/70 flex items-center gap-1">
+                  <span>🔒 يتطلب إكمال:</span>
+                  <span className="font-bold">{cryptoMissingReqs.join(' • ')}</span>
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-4 mt-6">
               <span
                 className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold border-r-2 border-primary`}
@@ -610,11 +683,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Cyber Millionaire Card */}
           <button
-            onClick={() => onSelectGame("millionaire")}
-            className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant rounded-2xl hover:shadow-[-12px_12px_0px_var(--sys-primary)] transition-all hover:-translate-y-1 flex flex-col items-start h-full`}
+            onClick={() => isMillionaireUnlocked ? onSelectGame("millionaire") : null}
+            disabled={!isMillionaireUnlocked}
+            className={`group relative text-right p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border rounded-2xl transition-all duration-300 flex flex-col items-start h-full
+              ${isMillionaireUnlocked 
+                ? 'bg-surface border-outline-variant hover:shadow-[-12px_12px_0px_var(--sys-primary)] hover:-translate-y-1 cursor-pointer' 
+                : 'bg-surface/50 border-outline/10 cursor-not-allowed'
+              }`}
+            style={!isMillionaireUnlocked ? { filter: 'grayscale(100%)', opacity: 0.6 } : {}}
           >
+            {!isMillionaireUnlocked && (
+              <div className="absolute top-3 left-3 z-10 animate-in fade-in">
+                <div className="p-2 rounded-full bg-error/20 backdrop-blur">
+                  <Lock className="w-4 h-4 text-error" />
+                </div>
+              </div>
+            )}
             <div
-              className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4`}
+              className={`w-12 h-12 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center rounded-none transition-colors mb-4
+                ${isMillionaireUnlocked ? 'text-primary group-hover:bg-primary' : 'text-gray-500'}`}
             >
               <Trophy className="w-6 h-6" />
             </div>
@@ -625,6 +712,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               يغطي الشبكات والتشفير والعمليات الدفاعية. استخدم مساعدة الذكاء
               الاصطناعي بحكمة لتخطي المراحل.
             </p>
+            
+            {!isMillionaireUnlocked && millionaireMissingReqs.length > 0 && (
+              <div className="mt-4 p-2 rounded-lg bg-error/5 border border-error/20 w-full text-right animate-in slide-in-from-bottom-2">
+                <p className="text-[10px] text-error/70 flex items-center gap-1">
+                  <span>🔒 يتطلب إكمال:</span>
+                  <span className="font-bold">{millionaireMissingReqs.join(' • ')}</span>
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-4 mt-6">
               <span
                 className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold border-r-2 border-primary`}
@@ -636,11 +733,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* SecureCity Map Card */}
           <button
-            onClick={() => onSelectGame("city")}
-            className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant rounded-2xl hover:shadow-[-12px_12px_0px_var(--sys-primary)] transition-all hover:-translate-y-1 flex flex-col items-start h-full lg:col-span-2`}
+            onClick={() => isCityUnlocked ? onSelectGame("city") : null}
+            disabled={!isCityUnlocked}
+            className={`group relative text-right p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border rounded-2xl transition-all duration-300 flex flex-col items-start h-full lg:col-span-2
+              ${isCityUnlocked 
+                ? 'bg-surface border-outline-variant hover:shadow-[-12px_12px_0px_var(--sys-primary)] hover:-translate-y-1 cursor-pointer' 
+                : 'bg-surface/50 border-outline/10 cursor-not-allowed'
+              }`}
+            style={!isCityUnlocked ? { filter: 'grayscale(100%)', opacity: 0.6 } : {}}
           >
+            {!isCityUnlocked && (
+              <div className="absolute top-3 left-3 z-10 animate-in fade-in">
+                <div className="p-2 rounded-full bg-error/20 backdrop-blur">
+                  <Lock className="w-4 h-4 text-error" />
+                </div>
+              </div>
+            )}
             <div
-              className={`w-12 h-12 bg-primary/10 text-primary border border-primary/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-primary transition-colors mb-4`}
+              className={`w-12 h-12 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center rounded-none transition-colors mb-4
+                ${isCityUnlocked ? 'text-primary group-hover:bg-primary' : 'text-gray-500'}`}
             >
               <Activity className="w-6 h-6" />
             </div>
@@ -652,6 +763,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               التهديدات المباشرة. تواصل مباشرة مع نظام الذكاء الاصطناعي Locus
               لتنفيذ الاستراتيجيات و توجيه الهجمات السيبرانية و رصد النتائج.
             </p>
+            
+            {!isCityUnlocked && cityMissingReqs.length > 0 && (
+              <div className="mt-4 p-2 rounded-lg bg-error/5 border border-error/20 w-full text-right animate-in slide-in-from-bottom-2">
+                <p className="text-[10px] text-error/70 flex items-center gap-1">
+                  <span>🔒 يتطلب إكمال:</span>
+                  <span className="font-bold">{cityMissingReqs.join(' • ')}</span>
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-4 mt-6">
               <span
                 className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-surface-variant text-on-surface-variant font-bold`}
@@ -663,11 +784,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* SSH Hack Card */}
           <button
-            onClick={() => onSelectGame("ssh")}
-            className={`group text-right bg-surface p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant rounded-2xl hover:shadow-[-12px_12px_0px_#22c55e] transition-all hover:-translate-y-1 flex flex-col items-start h-full`}
+            onClick={() => isSshUnlocked ? onSelectGame("ssh") : null}
+            disabled={!isSshUnlocked}
+            className={`group relative text-right p-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border rounded-2xl transition-all duration-300 flex flex-col items-start h-full
+              ${isSshUnlocked 
+                ? 'bg-surface border-outline-variant hover:shadow-[-12px_12px_0px_#22c55e] hover:-translate-y-1 cursor-pointer' 
+                : 'bg-surface/50 border-outline/10 cursor-not-allowed'
+              }`}
+            style={!isSshUnlocked ? { filter: 'grayscale(100%)', opacity: 0.6 } : {}}
           >
+            {!isSshUnlocked && (
+              <div className="absolute top-3 left-3 z-10 animate-in fade-in">
+                <div className="p-2 rounded-full bg-error/20 backdrop-blur">
+                  <Lock className="w-4 h-4 text-error" />
+                </div>
+              </div>
+            )}
             <div
-              className={`w-12 h-12 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-2xl flex items-center justify-center rounded-none group-hover:bg-emerald-500 group-hover:text-white transition-colors mb-4`}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center rounded-none transition-colors mb-4
+                ${isSshUnlocked 
+                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-white' 
+                  : 'bg-emerald-500/5 text-gray-500 border border-outline/10'}`}
             >
               <TerminalLucide className="w-6 h-6" />
             </div>
@@ -678,6 +815,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               حاول اختراق خادم حقيقي عبر SSH — واجه نظام fail2ban إذا فشلت.
               تعلّم أوامر Linux الحقيقية في بيئة آمنة.
             </p>
+            
+            {!isSshUnlocked && sshMissingReqs.length > 0 && (
+              <div className="mt-4 p-2 rounded-lg bg-error/5 border border-error/20 w-full text-right animate-in slide-in-from-bottom-2">
+                <p className="text-[10px] text-error/70 flex items-center gap-1">
+                  <span>🔒 يتطلب إكمال:</span>
+                  <span className="font-bold">{sshMissingReqs.join(' • ')}</span>
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-4 mt-6">
               <span
                 className={`text-[9px] uppercase tracking-widest px-2 py-1 bg-emerald-500/10 text-emerald-500 font-bold border-r-2 border-emerald-500`}

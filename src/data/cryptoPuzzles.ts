@@ -109,6 +109,14 @@ export const puzzles: CryptoPuzzle[] = [
 ];
 
 export function getRandomPuzzles(count: number = 10): CryptoPuzzle[] {
-  const shuffled = [...puzzles].sort(() => 0.5 - Math.random());
+  // تصفية الأسئلة النظرية غير المتعلقة بالتشفير والأمن
+  const securityPuzzles = puzzles.filter(p => 
+    p.type === 'crypto' || 
+    ['SSH', 'SUDO', 'CHMOD', 'PASSWD', 'NMAP', 'TCPDUMP', 'NETCAT', 
+     'WIRESHARK', 'BURP', 'FIREWALL', 'PROXY', 'SANDBOX', 'ROOT',
+     'KILL', 'GREP', 'BASH', 'CHOWN'].includes(p.answer)
+  );
+  
+  const shuffled = [...securityPuzzles].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count);
 }

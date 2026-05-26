@@ -345,11 +345,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       if (path === '/api/user/profile' && method === 'POST') {
         const { user_id, nickname, email, password } = await request.json() as any;
         if (!user_id) return jsonResponse({ error: 'user_id required' }, 400);
+        
+        // Prevent changing email from backend/API
+        if (email !== undefined) {
+          return jsonResponse({ error: 'Email cannot be changed' }, 403);
+        }
 
         const updates: string[] = [];
         const params: any[] = [];
         if (nickname !== undefined) { updates.push('nickname = ?'); params.push(nickname); }
-        if (email !== undefined) { updates.push('email = ?'); params.push(email); }
         if (password !== undefined) { 
           const { hash } = await hashPassword(password);
           updates.push('password_hash = ?'); 

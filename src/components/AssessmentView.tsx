@@ -15,6 +15,8 @@ import {
   Map as MapIcon,
   Bot,
   Route,
+  Gamepad2,
+  RefreshCcw,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import { generateText, generateJSON } from "../services/aiClient";
@@ -35,13 +37,13 @@ const TreeBranch: React.FC<{ node: MindMapNode; depth?: number }> = ({
       {/* Node Box */}
       <div
         className={`
-        relative shrink-0 flex items-center justify-center text-center max-w-[200px]
+        relative shrink-0 flex items-center justify-center text-center max-w-[200px] rounded-lg
         ${
           depth === 0
             ? "bg-primary text-white p-4 text-lg font-serif font-bold shadow-[4px_4px_0px_rgba(26,26,26,1)] z-10 min-w-[150px]"
             : depth === 1
-              ? "bg-surface-container border-2 border-primary text-[#29396f] p-3 text-sm font-bold z-10"
-              : "bg-on-background border border-white/20 text-[#738cc7] p-2 text-xs z-10"
+              ? "bg-surface-container border-2 border-primary text-on-surface p-3 text-sm font-bold z-10"
+              : "bg-surface-container-high border border-outline/25 text-on-surface-variant p-2 text-xs z-10 font-medium"
         }
       `}
       >
@@ -65,6 +67,64 @@ const TreeBranch: React.FC<{ node: MindMapNode; depth?: number }> = ({
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const LevelHistogram: React.FC<{ score: number; totalQuestions: number }> = ({ score, totalQuestions }) => {
+  const percentage = (score / totalQuestions) * 100;
+  
+  const levels = [
+    { name: 'مبتدئ', min: 0, max: 20, color: '#ef4444', icon: '🔰' },
+    { name: 'متدرب', min: 20, max: 40, color: '#f97316', icon: '📚' },
+    { name: 'متوسط', min: 40, max: 60, color: '#eab308', icon: '⚡' },
+    { name: 'متقدم', min: 60, max: 80, color: '#22c55e', icon: '🛡️' },
+    { name: 'خبير', min: 80, max: 100, color: '#6366f1', icon: '🏆' },
+  ];
+  
+  const currentLevel = levels.find(l => percentage >= l.min && percentage < l.max) 
+    || levels[levels.length - 1];
+  
+  return (
+    <div className="w-full p-6 rounded-2xl bg-surface-container-low border border-outline/20 shadow-inner">
+      <h3 className="text-on-background font-bold text-lg mb-6 text-center flex items-center justify-center gap-2">
+        📊 <span>توزيع المستوى المتوقع</span>
+      </h3>
+      <div className="flex items-end justify-around gap-3 pt-6" style={{ height: '200px' }}>
+        {levels.map((level) => {
+          const isActive = level.name === currentLevel.name;
+          const midpoint = (level.min + level.max) / 2;
+          const distance = Math.abs(percentage - midpoint);
+          const barHeight = Math.max(15, 100 - distance);
+          
+          return (
+            <div key={level.name} className="flex flex-col items-center gap-2 flex-1 group">
+              <span className={`text-xs font-bold transition-all duration-300 ${isActive ? 'scale-110' : 'opacity-0 group-hover:opacity-100'}`} style={{ color: level.color }}>
+                {isActive ? `${percentage.toFixed(0)}%` : `${midpoint}%`}
+              </span>
+              <div 
+                className={`w-full rounded-t-xl transition-all duration-700 relative ${isActive ? 'animate-pulse' : 'hover:opacity-60 cursor-pointer'}`}
+                style={{ 
+                  height: `${barHeight}%`,
+                  backgroundColor: level.color,
+                  opacity: isActive ? 1 : 0.25,
+                  boxShadow: isActive ? `0 0 25px ${level.color}80` : 'none',
+                }}
+              >
+                {isActive && (
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-white shadow-md animate-ping" />
+                )}
+              </div>
+              <span className="text-sm text-center">
+                {level.icon}
+              </span>
+              <span className={`text-[11px] text-center transition-colors duration-300 ${isActive ? 'text-primary font-bold animate-pulse' : 'text-on-surface-variant font-medium'}`}>
+                {level.name}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -150,34 +210,60 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
   const generateAIPlan = async (evaluationLevel: string) => {
     setIsLoadingPlan(true);
     try {
-      const prompt = `أنت مرشد أكاديمي خبير ومستشار في الأمن السيبراني. 
-اسم الطالب: ${studentName || "المتدرب"}
-درجة تقييم تحديد المستوى: ${score} من 10.
-المستوى الذي تم تحديده: ${evaluationLevel}
+      const prompt = `أنت مستشار تعليمي ومرشد أكاديمي خبير في الأمن السيبراني. 
+الطالب "${studentName || "المتدرب"}" حصل على ${score}/10 في اختبار تحديد المستوى.
+المستوى المقيّم والمحدد له: ${evaluationLevel}
 
-المطلوب إرجاع البيانات بصيغة JSON فقط بهذا الهيكل:
+## الألعاب والموارد التعليمية المتاحة في المنصة:
+1. **الدورات التعليمية**: دورات نظرية في أساسيات الأمن السيبراني.
+2. **الرؤى السيبرانية**: بطاقات معرفية سريعة عن مفاهيم الأمان.
+3. **تشفير الأوامر**: ألغاز تشفير وأوامر Linux عملية.
+4. **المليونير السيبراني**: مسابقة معرفية شاملة بأسلوب من سيربح المليون.
+5. **محاكاة المدينة الآمنة (Secure City)**: محاكاة هجمات ودفاع على بنية تحتية حرجة (3 مستويات).
+6. **اختراق الخادم (SSH)**: محاكاة اختراق خادم عملي عبر منفذ SSH.
+
+## المطلوب:
+بناءً على مستوى الطالب المقيّم "${evaluationLevel}"، أنشئ خطة دراسية مرحلية متكاملة تربطه بالألعاب والموارد أعلاه:
+- **إذا كان مبتدئ/متدرب**: يبدأ بالدورات التعليمية والرؤى السيبرانية كخطوة أولى، ثم ينتقل لتشفير الأوامر والمليونير كخطوة ثانية.
+- **إذا كان متوسط**: يراجع الرؤى السيبرانية سريعاً ثم ينتقل مباشرة لتشفير الأوامر ولعبة المليونير السيبراني ومستويات المدينة الآمنة الأولى.
+- **إذا كان متقدم/خبير**: يبدأ مباشرة بالمليونير، ثم يدخل لمحاكاة المدينة الآمنة المتقدمة وتجربة اختراق الخادم التفاعلية (SSH).
+
+كل مرحلة يجب أن تحتوي على:
+- اسم اللعبة/المورد المطلوب.
+- الهدف التعليمي من المرحلة.
+- معيار الانتقال والنجاح للمرحلة التالية.
+
+المطلوب إرجاع البيانات بصيغة JSON فقط بهذا الهيكل الدقيق (باللغة العربية الفصحى):
 {
-  "planMarkdown": "ناقش هنا التقييم، الأهداف، الخطة العملية والنصيحة الذهبية بتنسيق Markdown متكامل.",
+  "planMarkdown": "اكتب الخطة الدراسية هنا بصيغة Markdown متكاملة وجميلة مع عناوين ورموز تعبيرية ملائمة وجداول إن أمكن.",
   "mindMap": {
-    "title": "مستواك المتوقع",
+    "title": "مستواك المتوقع: ${evaluationLevel}",
     "children": [
       {
         "title": "نقاط القوة",
-        "children": [{"title": "..."}, {"title": "..."}]
+        "children": [{"title": "قوة 1"}, {"title": "قوة 2"}]
       },
       {
-        "title": "نقاط التطوير",
-        "children": [{"title": "..."}, {"title": "..."}]
+        "title": "مجالات التطوير",
+        "children": [{"title": "تطوير 1"}, {"title": "تطوير 2"}]
       },
       {
-        "title": "الأهداف الأساسية",
-        "children": [{"title": "..."}, {"title": "..."}]
+        "title": "المرحلة 1: التأسيس",
+        "children": [{"title": "المورد: [اسم اللعبة/الدورة]"}, {"title": "الهدف: [الهدف]"}]
+      },
+      {
+        "title": "المرحلة 2: التطبيق",
+        "children": [{"title": "المورد: [اسم اللعبة]"}, {"title": "الهدف: [الهدف]"}]
+      },
+      {
+        "title": "المرحلة 3: الاحتراف",
+        "children": [{"title": "المورد: [اسم اللعبة]"}, {"title": "الهدف: [الهدف]"}]
       }
     ]
   }
 }
 
-تأكد من أن النص بالعربية الفصحى. استخدم تنسيق JSON صحيح.`;
+تأكد من أن النص بالعربية الفصحى، ولا تضف أي نص خارج كود الـ JSON. استخدم تنسيق JSON صحيح وخالٍ من الأخطاء.`;
 
       const response = await generateJSON(prompt);
 
@@ -255,7 +341,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
                     <span className="font-label-caps text-[10px] text-primary block mb-1 tracking-widest uppercase">
                       SYSTEM_SENTINEL_AI
                     </span>
-                    <h2 className="text-xl font-bold text-white">
+                    <h2 className="text-xl font-bold text-on-surface">
                       المرشد الذكي
                     </h2>
                   </div>
@@ -297,6 +383,9 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
                 </div>
               </div>
 
+              {/* Level Histogram */}
+              <LevelHistogram score={score} totalQuestions={questions.length} />
+
               {/* Stats Bento */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="glass-panel bg-surface-container-low/80 p-4 rounded-xl border-r-4 border-r-primary shadow-lg">
@@ -307,11 +396,11 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
                     {score * 10}%
                   </div>
                 </div>
-                <div className="glass-panel bg-surface-container-low/80 p-4 rounded-xl border-r-4 border-r-secondary shadow-lg">
-                  <span className="font-label-caps text-on-surface-variant text-[10px]">
+                <div className="glass-panel bg-surface-container-low/80 p-4 rounded-xl border-r-4 border-r-primary shadow-lg">
+                  <span className="text-on-surface text-xs font-medium">
                     الأسئلة المجابة
                   </span>
-                  <div className="text-2xl font-bold text-secondary mt-1">
+                  <div className="text-2xl font-bold text-primary mt-1">
                     10/10
                   </div>
                 </div>
@@ -324,7 +413,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
                 <div className="flex items-center justify-between mb-10">
                   <div className="flex items-center gap-3">
                     <Route className="w-6 h-6 text-primary" />
-                    <h3 className="text-2xl font-bold text-[#473f92]">
+                    <h3 className="text-2xl font-bold text-primary">
                       مسار التعلم الموصى به
                     </h3>
                   </div>
@@ -377,18 +466,36 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
             </div>
           </div>
 
-          <div className="mt-12 flex justify-center gap-4 border-t border-background/20 pt-8 pb-12">
-            <button
+          <div className="mt-12 flex justify-center gap-4 border-t border-outline/20 pt-8 pb-12">
+            {/* زر 1: الانتقال للألعاب (يحدّث المستوى ويعود) */}
+            <button 
               onClick={() => onUpdateLevel?.(evaluation.level)}
-              className="flex items-center justify-center gap-2 text-sm uppercase tracking-widest font-bold text-on-surface bg-surface border border-outline shadow-sm hover:bg-surface-variant hover:text-primary hover:border-primary/50 transition-all rounded-lg px-8 py-4 focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white font-bold 
+                         hover:bg-primary/80 transition-all cursor-pointer"
             >
+              <Gamepad2 className="w-5 h-5" />
               الانتقال إلى الألعاب بالمركز التدريبي
             </button>
-            <button
-              onClick={onBack}
-              className="flex items-center gap-2 text-sm uppercase tracking-widest font-bold text-on-surface bg-surface border border-outline shadow-sm hover:bg-surface-variant hover:text-primary hover:border-primary/50 transition-all rounded-lg px-8 py-4 focus:outline-none focus:ring-2 focus:ring-primary/20"
+
+            {/* زر 2: إعادة الاختبار */}
+            <button 
+              onClick={() => {
+                setCurrentIndex(0);
+                setScore(0);
+                setIsFinished(false);
+                setUserAnswers(Array(10).fill(""));
+                setAiPlan(null);
+                setAiMindMap(null);
+                setCurrentHint(null);
+                setShowHintModal(false);
+                setHintPassword("");
+                setHintError("");
+              }}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-outline 
+                         text-on-surface hover:bg-surface-variant transition-all cursor-pointer"
             >
-              العودة للوراء
+              <RefreshCcw className="w-5 h-5" />
+              إعادة الاختبار
             </button>
           </div>
         </main>
@@ -397,17 +504,17 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
   }
 
   return (
-    <div className="w-full h-full bg-on-background text-background flex flex-col font-sans relative">
+    <div className="w-full h-full bg-background text-on-background flex flex-col font-sans relative">
       {showTutorial && (
         <TutorialOverlay
           message="قم بالإجابة عن هذا التقييم لتحديد مستواك في الأمن السيبراني. بناءً على نتيجتك، سيقوم المرشد الذكي ببناء خطة دراسية مخصصة لك."
           onDismiss={() => setShowTutorial(false)}
         />
       )}
-      <header className="flex justify-between items-center p-8 border-b border-background/10 shrink-0">
+      <header className="flex justify-between items-center p-8 border-b border-outline/10 shrink-0">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold text-on-surface bg-surface border border-outline shadow-sm hover:bg-surface-variant hover:text-primary hover:border-primary/50 transition-all rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold text-on-surface bg-surface border border-outline shadow-sm hover:bg-surface-variant hover:text-primary hover:border-primary/50 transition-all rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
         >
           <LogOut className="w-3 h-3" /> إحباط الاختبار
         </button>
@@ -428,7 +535,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
               {!currentHint && !isLoadingHint && (
                 <button
                   onClick={() => setShowHintModal(true)}
-                  className="shrink-0 flex items-center gap-2 bg-on-background border border-primary/30 text-primary px-3 py-1.5 hover:bg-primary hover:text-white transition-colors text-[10px] font-bold tracking-widest uppercase mb-4"
+                  className="shrink-0 flex items-center gap-2 bg-transparent border border-primary/30 text-primary px-3 py-1.5 hover:bg-primary hover:text-white transition-colors text-[10px] font-bold tracking-widest uppercase mb-4 cursor-pointer"
                 >
                   <Sparkles className="w-3 h-3" />
                   تلميح ذكي
@@ -449,7 +556,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
             )}
 
             {currentHint && (
-              <div className="mt-6 p-4 border border-primary/30 bg-primary/5 text-background/80 text-sm font-sans leading-relaxed text-right relative">
+              <div className="mt-6 p-4 border border-primary/30 bg-primary/5 text-on-surface-variant text-sm font-sans leading-relaxed text-right relative rounded-lg">
                 <Sparkles className="w-4 h-4 text-primary absolute top-4 left-4" />
                 <p className="font-bold text-primary mb-1 text-[10px] uppercase tracking-widest">
                   تلميح المرشد الذكي:
@@ -459,7 +566,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
             )}
 
             {showHintModal && (
-              <div className="mt-4 p-4 border border-on-background bg-surface-container absolute top-12 left-0 w-64 z-20 shadow-2xl shadow-black/50 text-right">
+              <div className="mt-4 p-4 border border-outline bg-surface-container absolute top-12 left-0 w-64 z-20 shadow-2xl shadow-black/50 text-right rounded-lg">
                 <p className="text-[10px] uppercase tracking-widest font-bold text-primary mb-3">
                   هذا التلميح مخصص للمدراء فقط
                 </p>
@@ -468,7 +575,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
                   value={hintPassword}
                   onChange={(e) => setHintPassword(e.target.value)}
                   placeholder="أدخل كلمة سر المدير"
-                  className="w-full bg-black border border-background/20 text-white p-2 text-sm mb-3 focus:outline-none focus:border-primary"
+                  className="w-full bg-black border border-outline/25 text-white p-2 text-sm mb-3 focus:outline-none focus:border-primary rounded"
                   onKeyDown={(e) => e.key === "Enter" && handleHintRequest()}
                   autoFocus
                 />
@@ -482,13 +589,13 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
                       setHintError("");
                       setHintPassword("");
                     }}
-                    className="px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold hover:text-primary transition-colors"
+                    className="px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold hover:text-primary transition-colors cursor-pointer"
                   >
                     إلغاء
                   </button>
                   <button
                     onClick={handleHintRequest}
-                    className="px-3 py-1.5 bg-primary text-white text-[10px] uppercase tracking-widest font-bold hover:bg-white hover:text-black transition-colors"
+                    className="px-3 py-1.5 bg-primary text-white text-[10px] uppercase tracking-widest font-bold hover:bg-white hover:text-black transition-colors cursor-pointer rounded"
                   >
                     تأكيد
                   </button>
@@ -506,7 +613,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
                     <button
                       key={i}
                       onClick={() => handleAnswerChange(opt)}
-                      className={`text-right w-full p-5 border transition-colors flex items-center justify-between gap-4 ${isSelected ? "border-primary bg-primary/10 text-white" : "border-background/20 text-background/70 hover:border-background/50 hover:text-background"}`}
+                      className={`text-right w-full p-5 border transition-colors flex items-center justify-between gap-4 cursor-pointer rounded-lg ${isSelected ? "border-primary bg-primary/10 text-on-surface font-semibold" : "border-outline/20 text-on-surface-variant hover:border-primary/50 hover:text-on-surface"}`}
                     >
                       <span className="text-lg font-sans leading-relaxed">
                         {opt}
@@ -520,7 +627,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
               </div>
             ) : (
               <div
-                className="bg-black border border-background/20 p-4 font-mono text-left"
+                className="bg-black border border-outline/25 p-4 font-mono text-left rounded-lg"
                 dir="ltr"
               >
                 <div className="flex items-center gap-3 text-primary mb-2 text-sm opacity-50">
@@ -532,7 +639,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
                   value={userAnswers[currentIndex]}
                   onChange={(e) => handleAnswerChange(e.target.value)}
                   placeholder="Type command here..."
-                  className="w-full bg-transparent text-green-400 focus:outline-none text-xl placeholder-green-900/50"
+                  className="w-full bg-transparent text-green-400 focus:outline-none text-xl placeholder-green-500/30"
                   onKeyDown={(e) =>
                     e.key === "Enter" &&
                     userAnswers[currentIndex].trim() &&
@@ -546,13 +653,13 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
       </main>
 
       <footer
-        className="p-8 border-t border-background/10 flex justify-between items-center shrink-0 w-full"
+        className="p-8 border-t border-outline/10 flex justify-between items-center shrink-0 w-full"
         dir="rtl"
       >
         {currentIndex > 0 ? (
           <button
             onClick={handlePrevious}
-            className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold text-on-surface bg-surface border border-outline shadow-sm hover:bg-surface-variant hover:text-primary hover:border-primary/50 transition-all rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold text-on-surface bg-surface border border-outline shadow-sm hover:bg-surface-variant hover:text-primary hover:border-primary/50 transition-all rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
           >
             السؤال السابق
           </button>
@@ -562,7 +669,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({
         <button
           onClick={handleNext}
           disabled={!userAnswers[currentIndex].trim()}
-          className="bg-primary text-white px-8 py-4 font-bold uppercase text-[11px] tracking-[0.2em] hover:bg-white hover:text-on-background transition-colors disabled:opacity-30 disabled:hover:bg-primary disabled:hover:text-white cursor-pointer disabled:cursor-not-allowed"
+          className="bg-primary text-white px-8 py-4 font-bold uppercase text-[11px] tracking-[0.2em] hover:bg-primary/80 transition-all disabled:opacity-50 disabled:bg-gray-600 disabled:text-gray-300 cursor-pointer disabled:cursor-not-allowed rounded-lg shadow-md"
         >
           {currentIndex === questions.length - 1
             ? "تقديم التقييم"

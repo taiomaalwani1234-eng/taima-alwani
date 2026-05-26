@@ -22,6 +22,7 @@ import {
   Sun,
   Moon,
   ArrowRight,
+  Lock,
 } from "lucide-react";
 import {
   LEVEL_1_SECTORS,
@@ -33,6 +34,7 @@ import {
 } from "../data/cityData";
 
 import { TutorialOverlay } from "./TutorialOverlay";
+import { GameProgress } from "../data/gameProgression";
 
 interface SecureCityViewProps {
   onBack: () => void;
@@ -41,6 +43,9 @@ interface SecureCityViewProps {
   isTutorial?: boolean;
   avatarSeed?: string;
   onAvatarSelect?: (seed: string) => void;
+  onGameComplete?: (gameType: string, data: any) => void;
+  gameProgress?: GameProgress;
+  userRole?: string;
 }
 
 interface TerminalLog {
@@ -52,24 +57,29 @@ const CRYPTO_PUZZLES = [
   {
     question: 'نوع: التشفير بالجمع | فك تشفير النص "bcde" (مفتاح=1)',
     answer: "abcd",
+    hint: "كل حرف تم إزاحته بمقدار +1 للأمـام. قم بإرجاعه خطوة واحدة للخلف (bcde -> abcd).",
   },
   {
     question: 'نوع: الإزاحة (قيصر) | فك تشفير النص "khoor" (مفتاح=3)',
     answer: "hello",
+    hint: "قم بإزاحة كل حرف 3 خطوات للخلف في الأبجدية الإنجليزية (k -> h, h -> e).",
   },
   {
     question: 'نوع: الاستبدال | إذا كان A=Z و B=Y، فما هو فك تشفير "ZYY"؟',
     answer: "abb",
+    hint: "استبدل كل حرف بقرينه العكسي في الأبجدية (Z هو A، وY هو B).",
   },
   {
     question:
       "نوع: التشفير بالضرب | المفتاح=3 (الأبجدية 26). تشفير الحرف B(1) هو D(3). ما هو تشفير C(2)؟",
     answer: "g",
+    hint: "حاصل ضرب الموقع (2) في المفتاح (3) هو 6، وهو يوافق حرف g في الترتيب (a=0, b=1, c=2, ...).",
   },
   {
     question:
       'نوع: وحيد الحرف | فك تشفير "xsx" أداة استغلال، إذا كان x=s و s=x',
     answer: "sxs",
+    hint: "قم بتبديل كل حرف x بحرف s، وكل حرف s بحرف x في الكلمة 'xsx'.",
   },
 ];
 
@@ -77,14 +87,17 @@ const DEFENDER_PUZZLES = [
   {
     question: "أدخل أمر إيقاف الخدمة الخبيثة malware.service (بدون sudo):",
     answer: "systemctl stop malware.service",
+    hint: "استخدم الأداة systemctl مع الإجراء stop تليها اسم الخدمة malware.service",
   },
   {
     question: "أدخل أمر حذف الملف /tmp/virus بالقوة:",
     answer: "rm -f /tmp/virus",
+    hint: "الأمر هو rm مع خيار القوة -f والمسار الكامل للملف /tmp/virus",
   },
   {
     question: "أدخل أمر جدار الحماية لمنع المنفذ 4444 (ufw):",
     answer: "ufw deny 4444",
+    hint: "استخدم ufw متبوعاً بـ deny ثم رقم المنفذ 4444",
   },
 ];
 
@@ -99,27 +112,35 @@ const COMMAND_MAPPING: Record<string, string> = {
 };
 
 const playErrorSound = () => {
-  const audioCtx = new (
-    window.AudioContext || (window as any).webkitAudioContext
-  )();
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
+  try {
+    const audioCtx = new (
+      window.AudioContext || (window as any).webkitAudioContext
+    )();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
 
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
 
-  oscillator.type = "sawtooth";
-  oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
-  oscillator.frequency.exponentialRampToValueAtTime(
-    40,
-    audioCtx.currentTime + 0.5,
-  );
+    // صوت إنذار (صفارة إنذار)
+    oscillator.type = "square";
 
-  gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+    // تذبذب التردد بين عالي ومنخفض (تأثير صفارة الإنذار)
+    const now = audioCtx.currentTime;
+    oscillator.frequency.setValueAtTime(800, now);
+    oscillator.frequency.linearRampToValueAtTime(400, now + 0.25);
+    oscillator.frequency.linearRampToValueAtTime(800, now + 0.5);
+    oscillator.frequency.linearRampToValueAtTime(400, now + 0.75);
+    oscillator.frequency.linearRampToValueAtTime(800, now + 1.0);
 
-  oscillator.start();
-  oscillator.stop(audioCtx.currentTime + 0.5);
+    gainNode.gain.setValueAtTime(0.15, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 1.0);
+
+    oscillator.start(now);
+    oscillator.stop(now + 1.0);
+  } catch (e) {
+    console.warn("Audio not supported");
+  }
 };
 
 export const SecureCityView: React.FC<SecureCityViewProps> = ({
@@ -129,6 +150,17 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
   isTutorial = false,
   avatarSeed,
   onAvatarSelect,
+  onGameComplete,
+  gameProgress = {
+    assessment: false,
+    crypto: false,
+    millionaire: false,
+    city_level1: false,
+    city_level2: false,
+    city_level3: false,
+    ssh: false,
+  },
+  userRole = "user",
 }) => {
   const [showTutorial, setShowTutorial] = useState(isTutorial);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -162,6 +194,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
   const [budget, setBudget] = useState(50000);
   const [sectors, setSectors] = useState<Sector[]>(LEVEL_1_SECTORS);
   const [activeSectorId, setActiveSectorId] = useState<string>("central_hub");
+  const [showPuzzleHint, setShowPuzzleHint] = useState(false);
 
   const [provinceState, setProvinceState] = useState<{
     isOpen: boolean;
@@ -224,6 +257,8 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
   const [gameOver, setGameOver] = useState(false);
   const [levelWon, setLevelWon] = useState(false);
   const [gameWon, setGameWon] = useState(false);
+  const isLevel2Unlocked = gameProgress.city_level1 || userRole === 'admin';
+  const isLevel3Unlocked = gameProgress.city_level2 || userRole === 'admin';
 
   // Terminal State
   const [terminalHistory, setTerminalHistory] = useState<TerminalLog[]>([]);
@@ -365,8 +400,10 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
       if (newResolved >= targetRequired) {
         if (level === 3) {
           setGameWon(true);
+          onGameComplete?.('city_level3', { completed: true, budget });
         } else {
           setLevelWon(true);
+          onGameComplete?.(`city_level${level}`, { completed: true, budget });
         }
       } else {
         triggerAttack();
@@ -391,20 +428,70 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
     setTerminalInput("");
     addLog(input, "input");
 
-    if (currentAttack) {
-      addLog(
-        `[ERROR] Global terminal locked during breach. Must access Sector [${currentAttack.sectorId.toUpperCase()}] manually.`,
-        "error",
-      );
-      return;
-    }
+    const cmd = input.trim().toLowerCase();
+    const parts = cmd.split(/\s+/);
+    const command = parts[0];
 
-    if (input.toLowerCase() === "clear") {
-      setTerminalHistory([
-        { text: `[SYSTEM] Terminal cleared.`, type: "system" },
-      ]);
-    } else {
-      addLog(`[ERROR] Unknown command: '${input}'`, "error");
+    switch (command) {
+      case "clear":
+        setTerminalHistory([
+          { text: `[SYSTEM] Terminal cleared.`, type: "system" },
+        ]);
+        break;
+
+      case "status": {
+        const statusReport = sectors
+          .map(
+            (s) =>
+              `  [${s.status === "safe" ? "✅" : s.status === "warning" ? "⚠️" : "🔴"}] ${s.name}: ${s.status}`,
+          )
+          .join("\n");
+        addLog(`\n📊 حالة قطاعات الشبكة:\n${statusReport}`, "system");
+        break;
+      }
+
+      case "budget":
+        addLog(`💰 الرصيد التشغيلي المتاح: $${budget.toLocaleString()}`, "success");
+        break;
+
+      case "attacks":
+        addLog(`🎯 الهجمات المحلولة: ${attacksResolved}/${targetRequired}`, "system");
+        if (currentAttack) {
+          addLog(`⚠️ تهديد أمني نشط: ${currentAttack.title} على القطاع [${currentAttack.sectorId.toUpperCase()}]`, "error");
+        } else {
+          addLog("✅ لا يوجد هجوم نشط حالياً. الشبكة آمنة.", "success");
+        }
+        break;
+
+      case "level":
+        addLog(`📶 مستوى محاكاة الشبكة: ${level}`, "system");
+        break;
+
+      case "scan":
+        addLog("🔍 جاري بدء فحص سلامة العقد والشبكات الفرعية...", "system");
+        setIsTerminalBusy(true);
+        setTimeout(() => {
+          const compromised = sectors.filter((s) => s.status === "critical").length;
+          const warned = sectors.filter((s) => s.status === "warning").length;
+          const safe = sectors.filter((s) => s.status === "safe").length;
+          addLog(
+            `📡 نتائج الفحص:\n  - قطاعات آمنة: ${safe}\n  - قطاعات مخترقة: ${compromised}\n  - قطاعات مهددة: ${warned}`,
+            compromised > 0 ? "error" : warned > 0 ? "warning" : "success",
+          );
+          setIsTerminalBusy(false);
+        }, 1500);
+        break;
+
+      case "help":
+        addLog(
+          `📋 الأوامر المتاحة بنظام التشغيل:\n  help    - عرض قائمة الأوامر والمساعدة\n  status  - عرض تقرير مفصل بحالة قطاعات المدينة\n  budget  - الاستعلام عن الرصيد المالي التشغيلي\n  attacks - عرض تقرير الهجمات الأمنية المصدودة\n  level   - معرفة مستوى الوصول الحالي بالشبكة\n  scan    - بدء فحص شامل للشبكة الفرعية\n  clear   - تنظيف شاشة الطرفية`,
+          "system",
+        );
+        break;
+
+      default:
+        addLog(`[ERROR] أمر غير مدعوم: '${command}'. اكتب 'help' لعرض دليل الأوامر المتاحة.`, "error");
+        playErrorSound();
     }
   };
 
@@ -545,9 +632,21 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
 
             {/* Level 2 Card */}
             <button
-              onClick={() => loadLevel(2)}
-              className="glass-panel bg-surface-container-low/40 p-6 rounded-xl hover:bg-surface-variant/50 transition-all text-right group flex flex-col relative overflow-hidden"
+              onClick={() => isLevel2Unlocked ? loadLevel(2) : null}
+              disabled={!isLevel2Unlocked}
+              className={`glass-panel bg-surface-container-low/40 p-6 rounded-xl transition-all text-right group flex flex-col relative overflow-hidden
+                ${isLevel2Unlocked 
+                  ? 'hover:bg-surface-variant/50 cursor-pointer' 
+                  : 'grayscale opacity-50 cursor-not-allowed'
+                }`}
             >
+              {!isLevel2Unlocked && (
+                <div className="absolute top-3 left-3 z-20">
+                  <div className="p-1.5 rounded-full bg-error/20 backdrop-blur">
+                    <Lock className="w-4 h-4 text-error" />
+                  </div>
+                </div>
+              )}
               <div className="absolute -right-6 -top-6 text-[100px] font-h1-display font-bold opacity-5 text-secondary group-hover:opacity-10 transition-opacity">
                 02
               </div>
@@ -572,9 +671,21 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
 
             {/* Level 3 Card */}
             <button
-              onClick={() => loadLevel(3)}
-              className="glass-panel bg-error/10 border-error/30 p-6 rounded-xl hover:bg-error/20 transition-all text-right group flex flex-col relative overflow-hidden"
+              onClick={() => isLevel3Unlocked ? loadLevel(3) : null}
+              disabled={!isLevel3Unlocked}
+              className={`glass-panel p-6 rounded-xl transition-all text-right group flex flex-col relative overflow-hidden
+                ${isLevel3Unlocked 
+                  ? 'bg-error/10 border-error/30 hover:bg-error/20 cursor-pointer' 
+                  : 'bg-surface-container-low/20 border-outline/10 grayscale opacity-50 cursor-not-allowed'
+                }`}
             >
+              {!isLevel3Unlocked && (
+                <div className="absolute top-3 left-3 z-20">
+                  <div className="p-1.5 rounded-full bg-error/20 backdrop-blur">
+                    <Lock className="w-4 h-4 text-error" />
+                  </div>
+                </div>
+              )}
               <div className="absolute -right-6 -top-6 text-[100px] font-h1-display font-bold opacity-5 text-error group-hover:opacity-10 transition-opacity">
                 03
               </div>
@@ -834,7 +945,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                     <div ref={terminalEndRef} className="h-4" />
                   </div>
 
-                  {!gameOver && !levelWon && !gameWon && currentAttack ? (
+                  {!gameOver && !levelWon && !gameWon ? (
                     <form
                       onSubmit={handleTerminalSubmit}
                       className="flex items-center gap-2 p-3 bg-surface-container border-t border-outline-variant/20 shrink-0"
@@ -965,6 +1076,12 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                 >
                   القائمة الرئيسية
                 </button>
+                <button
+                  onClick={onBack}
+                  className="mt-2 w-full max-w-xs py-3 bg-primary text-on-primary font-label-caps text-[12px] font-bold clipped-corner hover:brightness-110 active:scale-95 transition-all text-center"
+                >
+                  ↩ العودة للوحة القيادة الرئيسية
+                </button>
               </div>
             )}
 
@@ -1051,6 +1168,8 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                         </button>
                         <button
                           onClick={() => {
+                            const sector = sectors.find((s) => s.id === provinceState.sectorId);
+                            const isSectorCompromised = sector && (sector.status === "critical" || sector.status === "warning");
                             const secStatuses =
                               targetStatuses[provinceState.sectorId!] || {};
                             const isBeingAttacked =
@@ -1058,10 +1177,11 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                                 (s) => s === "warning" || s === "critical",
                               ) ||
                               currentAttack?.sectorId ===
-                                provinceState.sectorId;
+                                provinceState.sectorId ||
+                              isSectorCompromised;
                             if (!isBeingAttacked) {
                               alert(
-                                "لا يوجد هجوم حالي على هذه المحافظة. الدخول مسموح للمدافع فقط أثناء الهجوم.",
+                                "لا يوجد هجوم حالي ولا ثغرات في هذه المحافظة. الدخول مسموح للمدافع فقط أثناء الهجوم أو عند وجود ثغرات.",
                               );
                               return;
                             }
@@ -1076,7 +1196,8 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                             ).some(
                               (s) => s === "warning" || s === "critical",
                             ) ||
-                            currentAttack?.sectorId === provinceState.sectorId
+                            currentAttack?.sectorId === provinceState.sectorId ||
+                            (sectors.find((s) => s.id === provinceState.sectorId)?.status !== "safe")
                               ? "bg-primary/10 border-primary text-primary hover:bg-primary hover:text-on-primary"
                               : "bg-surface-variant/50 border-outline-variant/30 text-on-surface-variant cursor-not-allowed opacity-70"
                           }`}
@@ -1154,9 +1275,18 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                                   }
 
                                   if (ans === "hint" || ans === "help") {
+                                    if (budget < 1000) {
+                                      setOverrideTerminalOutput((prev) => [
+                                        ...prev,
+                                        `[SYSTEM] ERROR: Insufficient budget for hint ($1,000 required).`,
+                                      ]);
+                                      target.reset();
+                                      return;
+                                    }
+                                    setBudget((prev) => Math.max(0, prev - 1000));
                                     setOverrideTerminalOutput((prev) => [
                                       ...prev,
-                                      `[SYSTEM] TIP: The recommended command is: ${expected}`,
+                                      `[SYSTEM] TIP (Cost $1,000): The recommended command is: ${expected}`,
                                     ]);
                                     target.reset();
                                     return;
@@ -1200,7 +1330,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                                 <input
                                   name="answer"
                                   required
-                                  className="bg-transparent outline-none flex-1 text-primary placeholder-primary/30 font-bold"
+                                  className="bg-transparent outline-none flex-1 text-primary placeholder-primary/30 font-bold min-w-0"
                                   placeholder="type instruction manually..."
                                   dir="ltr"
                                   type="text"
@@ -1208,6 +1338,25 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                                   autoComplete="off"
                                   spellCheck="false"
                                 />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (budget < 1000) {
+                                      alert("رصيدك غير كافٍ للحصول على تلميح ($1,000)!");
+                                      return;
+                                    }
+                                    setBudget((prev) => Math.max(0, prev - 1000));
+                                    const expected = COMMAND_MAPPING[currentAttack.title] || "mitigate_threat";
+                                    setOverrideTerminalOutput((prev) => [
+                                      ...prev,
+                                      `[SYSTEM] TIP (Cost $1,000): The recommended command is: ${expected}`,
+                                    ]);
+                                  }}
+                                  className="px-2 py-1 mr-2 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-all text-[11px] font-bold border border-primary/30 whitespace-nowrap"
+                                  title="عرض تلميح (-$1,000)"
+                                >
+                                  💡 تلميح (-$1,000)
+                                </button>
                                 <button type="submit" className="hidden">
                                   Enter
                                 </button>
@@ -1351,10 +1500,32 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                                             {`Welcome to SecureCity Terminal v2.4.1\nAuthenticating user... OK\nEstablishing secure connection... OK\n\n[SYSTEM ALERT]: Vulnerability detected in subsystem.\n`}
                                           </div>
                                           <div
-                                            className="text-primary mb-6"
+                                            className="text-primary mb-2"
                                             dir="rtl"
                                           >
                                             {provinceState.puzzle?.question}
+                                          </div>
+                                          {/* زر التلميح للمدافع */}
+                                          <div className="mb-4">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                if (budget < 2000) {
+                                                  alert("رصيدك غير كافٍ للحصول على تلميح ($2,000)!");
+                                                  return;
+                                                }
+                                                setBudget((prev) => Math.max(0, prev - 2000));
+                                                setShowPuzzleHint(true);
+                                              }}
+                                              className="text-xs text-primary/80 hover:text-primary underline flex items-center gap-1"
+                                            >
+                                              💡 طلب تلميح سيبراني (-$2,000)
+                                            </button>
+                                            {showPuzzleHint && provinceState.puzzle?.hint && (
+                                              <div className="mt-2 p-2 rounded bg-primary/10 border border-primary/30 text-xs text-primary leading-relaxed">
+                                                {provinceState.puzzle.hint}
+                                              </div>
+                                            )}
                                           </div>
 
                                           <form
@@ -1443,7 +1614,7 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                                           </h3>
                                         </div>
                                         <div
-                                          className={`p-4 rounded-lg border mb-6 font-mono text-center bg-error/10 border-error/30`}
+                                          className={`p-4 rounded-lg border mb-4 font-mono text-center bg-error/10 border-error/30`}
                                         >
                                           <p
                                             className="text-on-surface-variant text-sm mb-2"
@@ -1451,6 +1622,28 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                                           >
                                             {provinceState.puzzle?.question}
                                           </p>
+                                        </div>
+                                        {/* زر التلميح للمهاجم */}
+                                        <div className="mb-6 text-center">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (budget < 2000) {
+                                                alert("رصيدك غير كافٍ للحصول على تلميح ($2,000)!");
+                                                return;
+                                              }
+                                              setBudget((prev) => Math.max(0, prev - 2000));
+                                              setShowPuzzleHint(true);
+                                            }}
+                                            className="text-xs text-error/80 hover:text-error underline flex items-center gap-1 mx-auto justify-center"
+                                          >
+                                            💡 طلب فك تشفير تلميح (-$2,000)
+                                          </button>
+                                          {showPuzzleHint && provinceState.puzzle?.hint && (
+                                            <div className="mt-2 p-2 rounded bg-error/10 border border-error/30 text-xs text-error leading-relaxed text-right">
+                                              {provinceState.puzzle.hint}
+                                            </div>
+                                          )}
                                         </div>
                                         <form
                                           onSubmit={(e) => {
@@ -1692,9 +1885,10 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                                                 puzzle: {
                                                   question: puz.question,
                                                   answer: puz.answer,
-                                                  hint: "",
+                                                  hint: puz.hint || "",
                                                 },
                                               }));
+                                              setShowPuzzleHint(false);
                                             } else {
                                               // defender
                                               if (status === "safe") {
@@ -1717,9 +1911,10 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                                                 puzzle: {
                                                   question: puz.question,
                                                   answer: puz.answer,
-                                                  hint: "",
+                                                  hint: puz.hint || "",
                                                 },
                                               }));
+                                              setShowPuzzleHint(false);
                                             }
                                           }}
                                           className={`w-full mt-4 py-2 border font-bold transition-colors ${
