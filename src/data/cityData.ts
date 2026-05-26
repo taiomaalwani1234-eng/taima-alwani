@@ -5,6 +5,8 @@ export interface Sector {
   y: number;
   status: 'safe' | 'warning' | 'critical' | 'offline';
   description: string;
+  isHoneypot?: boolean;
+  honeypotTriggered?: boolean;
 }
 
 export const LEVEL_1_SECTORS: Sector[] = [

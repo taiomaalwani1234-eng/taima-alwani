@@ -60,7 +60,10 @@ export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSec
     ['ai_core', 'central_hub']
   ];
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, isHoneypot?: boolean, honeypotTriggered?: boolean) => {
+    if (isHoneypot) {
+      return honeypotTriggered ? '#22c55e' : '#3b82f6'; // green if triggered, blue if active
+    }
     switch(status) {
       case 'safe': return '#3BB2F6';
       case 'warning': return '#fcd34d';
@@ -124,21 +127,40 @@ export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSec
 
         {sectors.map(sector => {
           const isActive = sector.id === activeSectorId;
-          const color = getStatusColor(sector.status);
+          const color = getStatusColor(sector.status, sector.isHoneypot, sector.honeypotTriggered);
           const lat = mapYToLat(sector.y);
           const lng = mapXToLng(sector.x);
+          const isHoneypot = sector.isHoneypot;
           
           return (
             <React.Fragment key={sector.id}>
-              {(isActive || sector.status === 'critical' || sector.status === 'warning') && (
+              {/* Honeypot outer glow ring */}
+              {isHoneypot && (
+                <CircleMarker
+                  center={[lat, lng]}
+                  radius={isMobile ? 36 : 28}
+                  color={color}
+                  fillColor={color}
+                  fillOpacity={0.08}
+                  weight={1}
+                  dashArray="4, 8"
+                  interactive={true}
+                  eventHandlers={{
+                    click: () => {
+                      if (onSectorClick) onSectorClick(sector.id);
+                    }
+                  }}
+                />
+              )}
+              {(isActive || sector.status === 'critical' || sector.status === 'warning' || isHoneypot) && (
                 <CircleMarker
                   center={[lat, lng]}
                   radius={isActive ? (isMobile ? 32 : 24) : (isMobile ? 26 : 18)}
                   color={color}
                   fillColor={color}
-                  fillOpacity={0.15}
+                  fillOpacity={isHoneypot ? 0.25 : 0.15}
                   weight={isActive ? 3 : 2}
-                  dashArray={isActive ? "5, 5" : undefined}
+                  dashArray={isHoneypot ? "3, 6" : isActive ? "5, 5" : undefined}
                   interactive={true}
                   eventHandlers={{
                     click: () => {
@@ -149,9 +171,9 @@ export const CityMap: React.FC<CityMapProps> = ({ sectors, activeSectorId, onSec
               )}
               <CircleMarker
                 center={[lat, lng]}
-                radius={isActive ? (isMobile ? 22 : 14) : (isMobile ? 16 : 8)}
-                color={theme === 'light' ? '#FFFFFF' : '#0f172a'}
-                weight={2}
+                radius={isActive ? (isMobile ? 22 : 14) : isHoneypot ? (isMobile ? 18 : 10) : (isMobile ? 16 : 8)}
+                color={isHoneypot ? color : theme === 'light' ? '#FFFFFF' : '#0f172a'}
+                weight={isHoneypot ? 3 : 2}
                 fillColor={color}
                 fillOpacity={1}
                 interactive={true}

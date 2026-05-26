@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { CityMap, Sector } from "./Map";
+import { CityMap } from "./Map";
+import { Sector } from "../data/cityData";
 import { GlobalHeader } from "./GlobalHeader";
 import {
   LogOut,
@@ -23,6 +24,10 @@ import {
   Moon,
   ArrowRight,
   Lock,
+  Bug,
+  Eye,
+  Ban,
+  Plus,
 } from "lucide-react";
 import {
   LEVEL_1_SECTORS,
@@ -52,6 +57,34 @@ interface TerminalLog {
   text: string;
   type: "info" | "warning" | "error" | "success" | "input" | "system";
 }
+
+interface HoneypotLog {
+  ip: string;
+  hackerName: string;
+  timestamp: Date;
+  action: string;
+  isBlocked: boolean;
+}
+
+interface HoneypotNode {
+  id: string;
+  name: string;
+  sectorId: string;
+  type: 'web_server' | 'database' | 'email';
+  position: { x: number; y: number };
+  createdAt: Date;
+  isTriggered: boolean;
+  accessLogs: HoneypotLog[];
+}
+
+const HONEYPOT_TYPES = [
+  { id: 'web_server', name: 'خادم ويب وهمي', icon: '🌐', desc: 'يحاكي خادم ويب Apache/Nginx لجذب فحص المنافذ' },
+  { id: 'database', name: 'قاعدة بيانات وهمية', icon: '🗄️', desc: 'يحاكي MySQL/PostgreSQL مع بيانات مزيفة' },
+  { id: 'email', name: 'خادم بريد وهمي', icon: '📧', desc: 'يحاكي SMTP server لرصد محاولات التصيد' },
+] as const;
+
+const HONEYPOT_COST = 3000;
+const MAX_HONEYPOTS = 3;
 
 const CRYPTO_PUZZLES = [
   {
@@ -272,6 +305,135 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
     string[]
   >([]);
 
+  // ===== Honeypot System State =====
+  const [honeypots, setHoneypots] = useState<HoneypotNode[]>([]);
+  const [blockedIPs, setBlockedIPs] = useState<string[]>([]);
+  const [showHoneypotPanel, setShowHoneypotPanel] = useState(false);
+  const [selectedHoneypot, setSelectedHoneypot] = useState<string | null>(null);
+  const [showCreateHoneypot, setShowCreateHoneypot] = useState(false);
+
+  // Generate random attacker IP
+  const generateRandomIP = () => {
+    const ranges = ['10.', '172.16.', '192.168.', '203.0.', '45.33.', '185.220.', '91.134.', '77.247.'];
+    const base = ranges[Math.floor(Math.random() * ranges.length)];
+    const octets = base.split('.').length;
+    const remaining = 4 - octets;
+    const parts = [base.replace(/\.$/, '')];
+    for (let i = 0; i < remaining; i++) {
+      parts.push(String(Math.floor(Math.random() * 254) + 1));
+    }
+    return parts.join('.');
+  };
+
+  // Create a new honeypot
+  const createHoneypot = (name: string, sectorId: string, type: 'web_server' | 'database' | 'email') => {
+    if (honeypots.length >= MAX_HONEYPOTS) {
+      addLog(`[ERROR] الحد الأقصى ${MAX_HONEYPOTS} فخاخ Honeypot. لا يمكن إنشاء المزيد.`, "error");
+      return false;
+    }
+    if (budget < HONEYPOT_COST) {
+      addLog(`[ERROR] رصيد غير كافٍ. مطلوب: $${HONEYPOT_COST}، المتاح: $${budget}`, "error");
+      return false;
+    }
+
+    const sector = sectors.find(s => s.id === sectorId);
+    if (!sector) return false;
+
+    // Generate position near the sector but offset
+    const offsetX = (Math.random() - 0.5) * 60;
+    const offsetY = (Math.random() - 0.5) * 60;
+    const hpId = `honeypot_${Date.now()}`;
+
+    const newHoneypot: HoneypotNode = {
+      id: hpId,
+      name,
+      sectorId,
+      type,
+      position: { x: Math.max(10, Math.min(990, sector.x + offsetX)), y: Math.max(10, Math.min(990, sector.y + offsetY)) },
+      createdAt: new Date(),
+      isTriggered: false,
+      accessLogs: [],
+    };
+
+    setHoneypots(prev => [...prev, newHoneypot]);
+    setBudget(prev => prev - HONEYPOT_COST);
+
+    // Add honeypot as a new sector on the map
+    const hpSector: Sector = {
+      id: hpId,
+      name: `🍯 ${name}`,
+      x: newHoneypot.position.x,
+      y: newHoneypot.position.y,
+      status: 'safe',
+      description: `فخ Honeypot - ${HONEYPOT_TYPES.find(t => t.id === type)?.name || type}`,
+      isHoneypot: true,
+      honeypotTriggered: false,
+    };
+    setSectors(prev => [...prev, hpSector]);
+
+    addLog(`[HONEYPOT] ✅ تم نشر فخ "${name}" في القطاع [${sectorId.toUpperCase()}] - التكلفة: $${HONEYPOT_COST}`, "success");
+    return true;
+  };
+
+  // Trigger honeypot when attacker enters
+  const triggerHoneypot = (honeypotId: string, hackerName: string, hackerIP: string) => {
+    if (blockedIPs.includes(hackerIP)) return; // IP already blocked
+
+    setHoneypots(prev => prev.map(hp => {
+      if (hp.id === honeypotId) {
+        const newLog: HoneypotLog = {
+          ip: hackerIP,
+          hackerName,
+          timestamp: new Date(),
+          action: ['فحص منفذ', 'محاولة SSH', 'طلب HTTP مشبوه', 'محاولة SQL Injection', 'فحص ثغرات'][Math.floor(Math.random() * 5)],
+          isBlocked: false,
+        };
+        return { ...hp, isTriggered: true, accessLogs: [...hp.accessLogs, newLog] };
+      }
+      return hp;
+    }));
+
+    // Update map sector to show triggered state
+    setSectors(prev => prev.map(s => {
+      if (s.id === honeypotId) {
+        return { ...s, honeypotTriggered: true };
+      }
+      return s;
+    }));
+
+    addLog(`[🍯 HONEYPOT] ⚠️ تم رصد مهاجم! IP: ${hackerIP} | الاسم: ${hackerName} | الفخ: ${honeypotId}`, "warning");
+  };
+
+  // Block IP addresses
+  const blockIP = (ip: string) => {
+    if (blockedIPs.includes(ip)) return;
+    setBlockedIPs(prev => [...prev, ip]);
+    // Update all honeypot logs to mark this IP as blocked
+    setHoneypots(prev => prev.map(hp => ({
+      ...hp,
+      accessLogs: hp.accessLogs.map(log => log.ip === ip ? { ...log, isBlocked: true } : log),
+    })));
+    addLog(`[🚫 BLOCKED] تم حظر العنوان ${ip} - لن يستطيع تنفيذ هجمات إضافية.`, "success");
+  };
+
+  const blockAllIPs = () => {
+    const allIPs = new Set<string>();
+    honeypots.forEach(hp => hp.accessLogs.forEach(log => {
+      if (!log.isBlocked) allIPs.add(log.ip);
+    }));
+    const newIPs = Array.from(allIPs);
+    if (newIPs.length === 0) {
+      addLog(`[INFO] لا توجد عناوين IP جديدة لحظرها.`, "info");
+      return;
+    }
+    setBlockedIPs(prev => [...new Set([...prev, ...newIPs])]);
+    setHoneypots(prev => prev.map(hp => ({
+      ...hp,
+      accessLogs: hp.accessLogs.map(log => ({ ...log, isBlocked: true })),
+    })));
+    addLog(`[🚫 BLOCKED] تم حظر ${newIPs.length} عنوان IP جديد. إجمالي المحظورين: ${blockedIPs.length + newIPs.length}`, "success");
+  };
+
   const targetRequired = level === 1 ? 3 : level === 2 ? 5 : 7;
 
   const scrollToBottom = () => {
@@ -327,6 +489,13 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
     if (newLevel === 2) setBudget(75000);
     if (newLevel === 3) setBudget(100000);
 
+    // Reset honeypot state
+    setHoneypots([]);
+    setBlockedIPs([]);
+    setShowHoneypotPanel(false);
+    setSelectedHoneypot(null);
+    setShowCreateHoneypot(false);
+
     setGameState("playing");
   };
 
@@ -361,6 +530,20 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
         type: "system",
       },
     ]);
+
+    // Auto-trigger honeypots in the attacked sector (simulate attacker scanning)
+    const sectorHoneypots = honeypots.filter(hp => hp.sectorId === attack.sectorId);
+    if (sectorHoneypots.length > 0) {
+      setTimeout(() => {
+        const attackerIP = generateRandomIP();
+        const attackerName = ['DarkPhantom', 'Zer0Day', 'CyberGh0st', 'ShadowByte', 'NullPtr'][Math.floor(Math.random() * 5)];
+        sectorHoneypots.forEach(hp => {
+          if (!blockedIPs.includes(attackerIP)) {
+            triggerHoneypot(hp.id, attackerName, attackerIP);
+          }
+        });
+      }, 2000);
+    }
   };
 
   const executeDefense = async (option: any) => {
@@ -484,10 +667,26 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
 
       case "help":
         addLog(
-          `📋 الأوامر المتاحة بنظام التشغيل:\n  help    - عرض قائمة الأوامر والمساعدة\n  status  - عرض تقرير مفصل بحالة قطاعات المدينة\n  budget  - الاستعلام عن الرصيد المالي التشغيلي\n  attacks - عرض تقرير الهجمات الأمنية المصدودة\n  level   - معرفة مستوى الوصول الحالي بالشبكة\n  scan    - بدء فحص شامل للشبكة الفرعية\n  clear   - تنظيف شاشة الطرفية`,
+          `📋 الأوامر المتاحة بنظام التشغيل:\n  help     - عرض قائمة الأوامر والمساعدة\n  status   - عرض تقرير مفصل بحالة قطاعات المدينة\n  budget   - الاستعلام عن الرصيد المالي التشغيلي\n  attacks  - عرض تقرير الهجمات الأمنية المصدودة\n  level    - معرفة مستوى الوصول الحالي بالشبكة\n  scan     - بدء فحص شامل للشبكة الفرعية\n  honeypot - عرض حالة فخاخ Honeypot والعناوين المحظورة\n  clear    - تنظيف شاشة الطرفية`,
           "system",
         );
         break;
+
+      case "honeypot": {
+        if (honeypots.length === 0) {
+          addLog("🍯 لا توجد فخاخ Honeypot منصوبة حالياً. استخدم لوحة Honeypot في الشريط الجانبي لإنشاء فخ.", "info");
+        } else {
+          const hpReport = honeypots.map(hp => {
+            const status = hp.isTriggered ? "🟢 تم الرصد" : "🔵 نشط";
+            return `  [${status}] ${hp.name} | القطاع: ${hp.sectorId} | سجلات: ${hp.accessLogs.length}`;
+          }).join("\n");
+          addLog(`🍯 تقرير فخاخ Honeypot:\n${hpReport}`, "system");
+          if (blockedIPs.length > 0) {
+            addLog(`🚫 عناوين IP محظورة (${blockedIPs.length}):\n  ${blockedIPs.join("\n  ")}`, "warning");
+          }
+        }
+        break;
+      }
 
       default:
         addLog(`[ERROR] أمر غير مدعوم: '${command}'. اكتب 'help' لعرض دليل الأوامر المتاحة.`, "error");
@@ -969,6 +1168,207 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                   ) : null}
                 </div>
               )}
+
+              {/* ===== Honeypot Section ===== */}
+              <button
+                onClick={() => setShowHoneypotPanel(!showHoneypotPanel)}
+                className={`w-full flex items-center justify-end gap-3 px-4 py-3 transition-all duration-300 ${showHoneypotPanel ? "bg-blue-500/10 text-blue-400 border-r-2 border-blue-400" : "bg-surface hover:bg-surface-variant text-on-surface"}`}
+              >
+                <span className="font-body-main font-bold flex items-center gap-2">
+                  🍯 فخاخ Honeypot
+                  {honeypots.some(hp => hp.isTriggered) && (
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block"></span>
+                  )}
+                </span>
+                <Bug className="w-5 h-5" />
+              </button>
+              {showHoneypotPanel && (
+                <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/20 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-label-caps text-[12px] font-bold text-on-surface-variant tracking-[0.15em]">
+                      HONEYPOT_SYS
+                    </span>
+                    <span className="text-[10px] font-bold text-blue-400">
+                      {honeypots.length}/{MAX_HONEYPOTS}
+                    </span>
+                  </div>
+
+                  {/* Honeypot list */}
+                  {honeypots.length === 0 ? (
+                    <p className="text-[12px] text-on-surface-variant text-center py-2 opacity-60">
+                      لا توجد فخاخ منصوبة بعد
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {honeypots.map(hp => (
+                        <button
+                          key={hp.id}
+                          onClick={() => setSelectedHoneypot(selectedHoneypot === hp.id ? null : hp.id)}
+                          className={`w-full p-3 rounded-lg border text-right text-[12px] font-mono transition-all ${
+                            hp.isTriggered 
+                              ? "border-green-400/50 bg-green-400/10 text-green-400" 
+                              : "border-blue-400/30 bg-blue-400/5 text-blue-400"
+                          } ${selectedHoneypot === hp.id ? "ring-1 ring-blue-400/50" : ""}`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className={`w-2 h-2 rounded-full ${hp.isTriggered ? "bg-green-400 animate-pulse" : "bg-blue-400"}`}></span>
+                            <span className="font-bold">{hp.name}</span>
+                          </div>
+                          <div className="flex justify-between mt-1 text-[10px] opacity-70">
+                            <span>{hp.accessLogs.length} سجل</span>
+                            <span>{hp.isTriggered ? "🟢 تم الرصد" : "🔵 نشط"}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Selected Honeypot Logs */}
+                  {selectedHoneypot && (() => {
+                    const hp = honeypots.find(h => h.id === selectedHoneypot);
+                    if (!hp) return null;
+                    return (
+                      <div className="border border-blue-400/30 rounded-lg overflow-hidden">
+                        <div className="bg-blue-400/10 px-3 py-2 flex justify-between items-center">
+                          <button
+                            onClick={() => {
+                              blockAllIPs();
+                            }}
+                            disabled={hp.accessLogs.length === 0 || hp.accessLogs.every(l => l.isBlocked)}
+                            className="text-[10px] font-bold px-2 py-1 rounded bg-error/20 text-error hover:bg-error/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+                          >
+                            <Ban className="w-3 h-3" />
+                            حظر الكل
+                          </button>
+                          <span className="font-label-caps text-[10px] font-bold text-blue-400 tracking-widest">
+                            ACCESS_LOGS
+                          </span>
+                        </div>
+                        {hp.accessLogs.length === 0 ? (
+                          <p className="text-[11px] text-on-surface-variant text-center py-4 opacity-50">
+                            لا توجد سجلات وصول بعد
+                          </p>
+                        ) : (
+                          <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
+                            {hp.accessLogs.map((log, idx) => (
+                              <div
+                                key={idx}
+                                className={`px-3 py-2 border-b border-outline-variant/10 text-[11px] font-mono flex items-center justify-between gap-2 ${
+                                  log.isBlocked ? "opacity-40 line-through" : ""
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {!log.isBlocked ? (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        blockIP(log.ip);
+                                      }}
+                                      className="text-error hover:bg-error/20 p-1 rounded transition-all"
+                                      title="حظر هذا IP"
+                                    >
+                                      <Ban className="w-3 h-3" />
+                                    </button>
+                                  ) : (
+                                    <span className="text-on-surface-variant p-1">🚫</span>
+                                  )}
+                                  <span className={log.isBlocked ? "text-on-surface-variant" : "text-error"} dir="ltr">
+                                    {log.ip}
+                                  </span>
+                                </div>
+                                <div className="text-right flex-1">
+                                  <span className="text-on-surface-variant">{log.hackerName}</span>
+                                  <span className="text-on-surface-variant/50 mr-2 text-[9px]">{log.action}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Blocked IPs count */}
+                  {blockedIPs.length > 0 && (
+                    <div className="flex items-center justify-between p-2 bg-error/10 rounded-lg border border-error/20">
+                      <span className="text-[10px] font-bold text-error">
+                        {blockedIPs.length} IP محظور
+                      </span>
+                      <Ban className="w-3 h-3 text-error" />
+                    </div>
+                  )}
+
+                  {/* Create Honeypot button */}
+                  {honeypots.length < MAX_HONEYPOTS && (
+                    <button
+                      onClick={() => setShowCreateHoneypot(!showCreateHoneypot)}
+                      className="w-full py-2 border border-dashed border-blue-400/40 text-blue-400 text-[12px] font-bold rounded-lg hover:bg-blue-400/10 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      إنشاء Honeypot (-${HONEYPOT_COST.toLocaleString()})
+                    </button>
+                  )}
+
+                  {/* Create Honeypot Form */}
+                  {showCreateHoneypot && (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const fd = new FormData(e.currentTarget);
+                        const name = fd.get("hp_name") as string;
+                        const type = fd.get("hp_type") as 'web_server' | 'database' | 'email';
+                        const sectorId = activeSectorId;
+                        if (createHoneypot(name, sectorId, type)) {
+                          setShowCreateHoneypot(false);
+                          e.currentTarget.reset();
+                        }
+                      }}
+                      className="space-y-3 p-3 bg-blue-400/5 border border-blue-400/20 rounded-lg"
+                    >
+                      <div>
+                        <label className="block text-[10px] font-mono text-blue-400 mb-1">HONEYPOT_NAME</label>
+                        <input
+                          name="hp_name"
+                          required
+                          className="w-full bg-surface-container-lowest border-b-2 border-blue-400/30 focus:border-blue-400 text-on-surface py-1.5 px-2 outline-none font-mono text-[12px]"
+                          placeholder="اسم الفخ..."
+                          type="text"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-mono text-blue-400 mb-1">HONEYPOT_TYPE</label>
+                        <div className="space-y-2">
+                          {HONEYPOT_TYPES.map((ht) => (
+                            <label key={ht.id} className="flex items-center gap-2 p-2 rounded-lg border border-blue-400/10 hover:bg-blue-400/5 cursor-pointer transition-all">
+                              <input
+                                type="radio"
+                                name="hp_type"
+                                value={ht.id}
+                                defaultChecked={ht.id === 'web_server'}
+                                className="accent-blue-400"
+                              />
+                              <span className="text-xl">{ht.icon}</span>
+                              <div className="flex-1 text-right">
+                                <span className="block text-[11px] font-bold text-on-surface">{ht.name}</span>
+                                <span className="block text-[9px] text-on-surface-variant">{ht.desc}</span>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-on-surface-variant p-2 bg-blue-400/5 rounded border border-blue-400/10">
+                        📍 سيتم نشر الفخ بالقرب من: <strong className="text-blue-400">{activeSector.name}</strong>
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full py-2 bg-blue-500 text-white font-bold text-[12px] rounded-lg hover:bg-blue-600 transition-all"
+                      >
+                        🍯 نشر الفخ (-${HONEYPOT_COST.toLocaleString()})
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
             </nav>
             <div className="px-4 pb-6 mt-auto">
               <button
@@ -990,6 +1390,16 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                 activeSectorId={activeSectorId}
                 onSectorClick={(id) => {
                   setActiveSectorId(id);
+                  
+                  // Check if clicked sector is a honeypot
+                  const clickedSector = sectors.find(s => s.id === id);
+                  if (clickedSector?.isHoneypot) {
+                    setShowHoneypotPanel(true);
+                    setSelectedHoneypot(id);
+                    setShowMobileSidebar(true);
+                    return;
+                  }
+                  
                   const isCritical = currentAttack?.sectorId === id;
                   setProvinceState({
                     isOpen: true,
@@ -1404,6 +1814,26 @@ export const SecureCityView: React.FC<SecureCityViewProps> = ({
                                       }));
                                     } else {
                                       const ip = fd.get("ip") as string;
+                                      
+                                      // Check if IP is blocked
+                                      if (blockedIPs.includes(ip)) {
+                                        alert("⛔ عنوان IP محظور! لا يمكنك تنفيذ هجمات على هذا القطاع.");
+                                        addLog(`[🚫 BLOCKED] محاولة دخول مرفوضة من IP محظور: ${ip}`, "error");
+                                        return;
+                                      }
+                                      
+                                      // Trigger any honeypots in this sector
+                                      const sectorHoneypots = honeypots.filter(hp => hp.sectorId === provinceState.sectorId);
+                                      sectorHoneypots.forEach(hp => {
+                                        triggerHoneypot(hp.id, name, ip);
+                                      });
+                                      
+                                      // Also check if clicking on a honeypot sector directly
+                                      const clickedSector = sectors.find(s => s.id === provinceState.sectorId);
+                                      if (clickedSector?.isHoneypot) {
+                                        triggerHoneypot(clickedSector.id, name, ip);
+                                      }
+                                      
                                       setProvinceState((prev) => ({
                                         ...prev,
                                         isAuthenticated: true,
