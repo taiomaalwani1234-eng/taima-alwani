@@ -21,7 +21,7 @@ import {
   LogOut,
   Terminal as TerminalLucide,
 } from "lucide-react";
-import { updateProfile, getCurrentUser, saveUserLocally } from "../services/backendApi";
+import { updateProfile, getCurrentUser, saveUserLocally, fetchGameBalances, GameBalances } from "../services/backendApi";
 import { GameProgress, isGameUnlocked, getMissingRequirements } from "../data/gameProgression";
 import { getDailyNotifications } from "../data/notifications";
 
@@ -97,6 +97,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [balances, setBalances] = useState<GameBalances>({
+    cityBudget: 0,
+    millionaireMoney: 0,
+    cryptoCredits: 0,
+    sshScore: 0,
+    assessmentLevel: "لم يُحدد",
+  });
+
+  React.useEffect(() => {
+    if (showSettingsProfile && userId) {
+      fetchGameBalances(userId)
+        .then(setBalances)
+        .catch((err) => console.error("Failed to fetch game balances:", err));
+    }
+  }, [showSettingsProfile, userId, gameProgress]);
 
   React.useEffect(() => {
     if (theme === "dark") {
@@ -409,29 +424,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="space-y-3 pt-2">
-              <h4 className="font-bold text-xs uppercase tracking-widest text-on-surface/50 border-b border-outline-variant/20 pb-1">
-                رصيد الألعاب والإنجازات
+              <h4 className="font-bold text-xs uppercase tracking-widest text-on-surface/50 border-b border-outline-variant/20 pb-1 flex items-center gap-2">
+                🏆 رصيد الألعاب والإنجازات
               </h4>
               <div className="grid gap-2">
-                <div className="flex justify-between items-center bg-surface-variant/50 p-3 rounded-xl text-sm border border-outline-variant/30">
-                  <span className="font-bold font-mono text-primary">$ 5,000</span>
+                {/* محاكاة المدينة */}
+                <div className="flex justify-between items-center bg-surface-variant/30 p-3 rounded-xl text-sm border border-outline-variant/30 transition-all hover:bg-surface-variant/40">
+                  <span className="font-bold font-mono text-primary">${balances.cityBudget.toLocaleString()}</span>
                   <span className="flex items-center gap-2 text-xs opacity-80">
                     محاكاة المدينة <Activity className="w-3.5 h-3.5 text-primary" />
                   </span>
                 </div>
-                <div className="flex justify-between items-center bg-surface-variant/50 p-3 rounded-xl text-sm border border-outline-variant/30">
-                  <span className="font-bold font-mono text-secondary">1,250 pt</span>
+                {/* المليونير السيبراني */}
+                <div className="flex justify-between items-center bg-surface-variant/30 p-3 rounded-xl text-sm border border-outline-variant/30 transition-all hover:bg-surface-variant/40">
+                  <span className="font-bold font-mono text-secondary">${balances.millionaireMoney.toLocaleString()}</span>
                   <span className="flex items-center gap-2 text-xs opacity-80">
                     المليونير السيبراني <Trophy className="w-3.5 h-3.5 text-secondary" />
                   </span>
                 </div>
-                <div className="flex justify-between items-center bg-surface-variant/50 p-3 rounded-xl text-sm border border-outline-variant/30">
-                  <span className="font-bold font-mono text-emerald-500">12</span>
+                {/* ألغاز التشفير */}
+                <div className="flex justify-between items-center bg-surface-variant/30 p-3 rounded-xl text-sm border border-outline-variant/30 transition-all hover:bg-surface-variant/40">
+                  <span className="font-bold font-mono text-emerald-500">{balances.cryptoCredits} نقطة</span>
                   <span className="flex items-center gap-2 text-xs opacity-80">
                     ألغاز التشفير <Key className="w-3.5 h-3.5 text-emerald-500" />
                   </span>
                 </div>
+                {/* اختراق الخادم */}
+                <div className="flex justify-between items-center bg-surface-variant/30 p-3 rounded-xl text-sm border border-outline-variant/30 transition-all hover:bg-surface-variant/40">
+                  <span className="font-bold font-mono text-green-500">{balances.sshScore} pt</span>
+                  <span className="flex items-center gap-2 text-xs opacity-80">
+                    اختراق الخادم <TerminalLucide className="w-3.5 h-3.5 text-green-500" />
+                  </span>
+                </div>
+                {/* مستواك الحالي */}
+                <div className="flex justify-between items-center bg-primary/5 p-3 rounded-xl text-sm border border-primary/20">
+                  <span className="font-bold text-primary">{balances.assessmentLevel}</span>
+                  <span className="flex items-center gap-2 text-xs font-medium text-primary">
+                    مستواك الحالي <Target className="w-3.5 h-3.5 text-primary" />
+                  </span>
+                </div>
               </div>
+              
+              {/* رسالة إذا لم يلعب أي لعبة */}
+              {balances.cityBudget === 0 && balances.millionaireMoney === 0 && balances.cryptoCredits === 0 && balances.sshScore === 0 && (
+                <p className="text-[10px] text-on-surface-variant/60 text-center mt-2">
+                  ابدأ بلعب الألعاب لتحصل على رصيد! 🎮
+                </p>
+              )}
             </div>
           </div>
         )}
